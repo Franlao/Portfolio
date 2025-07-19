@@ -27,7 +27,36 @@ const { title, description } = Astro.props;
 		</div>
 
 		<script>
-			// Add “loaded” class once the document has completely loaded.
+			// CSS :has() fallback for older browsers
+			function initHeaderScrollFallback() {
+				const nav = document.querySelector('.smart-nav');
+				const body = document.body;
+				
+				if (!nav || !body) return;
+				
+				// Check if browser supports :has()
+				if (!CSS.supports('selector(:has(*))'))
+				{
+					// Fallback for browsers without :has() support
+					const observer = new MutationObserver(() => {
+						if (nav.classList.contains('scrolled')) {
+							body.classList.add('header-scrolled');
+						} else {
+							body.classList.remove('header-scrolled');
+						}
+					});
+					
+					observer.observe(nav, {
+						attributes: true,
+						attributeFilter: ['class']
+					});
+				}
+			}
+			
+			// Initialize fallback
+			document.addEventListener('DOMContentLoaded', initHeaderScrollFallback);
+			
+			// Add "loaded" class once the document has completely loaded.
 			addEventListener('load', () => document.documentElement.classList.add('loaded'));
 		</script>
 

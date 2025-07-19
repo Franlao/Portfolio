@@ -1,5 +1,9 @@
 /* Global variables */
 :root {
+	/* Navigation variables */
+	--nav-height: 70px;
+	--nav-height-compact: 55px;
+	--scroll-offset: 20px;
 	/* Colors */
 	--gray-0: #090b11;
 	--gray-50: #141925;
@@ -127,6 +131,40 @@ body {
 	font-family: var(--font-body);
 	-webkit-font-smoothing: antialiased;
 	line-height: 1.5;
+	/* Account for fixed header */
+	padding-top: var(--nav-height);
+	transition: padding-top 0.3s ease;
+}
+
+/* Smooth scroll behavior */
+html {
+	scroll-behavior: smooth;
+}
+
+/* Adjust body padding when header is compacted */
+body:has(.smart-nav.scrolled) {
+	padding-top: var(--nav-height-compact);
+}
+
+/* Fallback for browsers that don't support :has() */
+.header-scrolled {
+	padding-top: var(--nav-height-compact) !important;
+}
+
+/* Section scroll margin to account for fixed header */
+section[id] {
+	scroll-margin-top: calc(var(--nav-height) + var(--scroll-offset));
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+	body {
+		padding-top: var(--nav-height);
+	}
+	
+	section[id] {
+		scroll-margin-top: calc(var(--nav-height) + var(--scroll-offset));
+	}
 }
 
 *,

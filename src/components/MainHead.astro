@@ -8,13 +8,29 @@ interface Props {
 
 const {
 	title = 'Solim LAOKPEZI: Mon portfolio',
-	description = 'le portfolio de Solim LAOKPEZI',
+	description = 'Portfolio de Solim LAOKPEZI, étudiant en Master Data Science en Santé. Passionné par l\'intelligence artificielle et l\'analyse de données pour résoudre des défis de santé.',
 } = Astro.props;
 ---
 
 <meta charset="UTF-8" />
-<meta name="description" property="og:description" content={description} />
-<meta name="viewport" content="width=device-width" />
+<meta name="description" content={description} />
+<meta name="author" content="Solim LAOKPEZI" />
+<meta name="keywords" content="data science, santé, intelligence artificielle, analyse de données, portfolio, développeur" />
+<meta name="robots" content="index, follow" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content="https://solim201.github.io" />
+<meta property="og:image" content="https://solim201.github.io/assets/me2.jpg" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content="https://solim201.github.io/assets/me2.jpg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="generator" content={Astro.generator} />
 <title>{title}</title>
 
