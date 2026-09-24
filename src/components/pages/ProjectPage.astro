@@ -1,0 +1,97 @@
+---
+import { type CollectionEntry, render } from "astro:content";
+import {
+	getTranslations,
+	homePath,
+	type Lang,
+	projectPath,
+} from "../../i18n/ui";
+import Base from "../../layouts/Base.astro";
+import { localize, splitProjectId } from "../../lib/projects";
+import Cartouche from "../Cartouche.astro";
+import Footer from "../Footer.astro";
+
+interface Props {
+	entry: CollectionEntry<"projects">;
+}
+
+const { entry } = Astro.props;
+const { lang, slug } = splitProjectId(entry.id) as { lang: Lang; slug: string };
+const t = getTranslations(lang);
+const { Content } = await render(entry);
+const data = localize(lang, entry.data);
+const alternates = { fr: projectPath("fr", slug), en: projectPath("en", slug) };
+---
+
+<Base lang={lang} alternates={alternates} title={`${data.title}, Solim Laokpezi`} description={data.summary}>
+	<Cartouche lang={lang} alternates={alternates} />
+	<main class="sheet">
+		<article>
+			<header class="sheet-row project-head">
+				<p class="sheet-main project-back"><a href={`${homePath(lang)}#projects`}>{t("project.back")}</a></p>
+				<h1 class="sheet-main">{data.title}</h1>
+				<p class="sheet-main project-meta">{data.org}, {data.period}</p>
+				<p class="sheet-main project-lede">{data.summary}</p>
+			</header>
+			<div class="sheet-row">
+				<div class="prose">
+					<Content />
+				</div>
+			</div>
+		</article>
+	</main>
+	<Footer lang={lang} />
+</Base>
+
+<style>
+	.project-head {
+		padding-block: var(--space-6) var(--space-5);
+	}
+
+	.project-back {
+		font-size: var(--step--1);
+	}
+
+	.project-head h1 {
+		max-width: 22ch;
+		font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
+	}
+
+	.project-meta {
+		color: var(--ink-soft);
+	}
+
+	.project-lede {
+		max-width: 58ch;
+		font-size: var(--step-1);
+		line-height: 1.5;
+	}
+
+	.prose {
+		grid-column: 1 / -1;
+		min-width: 0;
+	}
+
+	@media (min-width: 720px) {
+		.prose {
+			grid-column: 2 / -1;
+		}
+	}
+
+	.prose > :global(*:not(.demo)) {
+		max-width: var(--measure);
+	}
+
+	.prose :global(h2) {
+		margin-top: var(--space-7);
+		font-size: var(--step-2);
+	}
+
+	.prose :global(p) {
+		margin-top: var(--space-4);
+	}
+
+	.prose :global(.demo) {
+		margin-top: var(--space-6);
+	}
+</style>

@@ -1,0 +1,371 @@
+.claims {
+	display: grid;
+	gap: var(--space-6);
+}
+
+.claims-top {
+	display: grid;
+	gap: var(--space-6);
+	align-items: start;
+}
+
+@media (min-width: 1000px) {
+	.claims-top {
+		grid-template-columns: minmax(17rem, 20rem) minmax(0, 1fr);
+	}
+}
+
+/* The claim file: a form on raised paper, ruled like a printed document. */
+
+.claim-file {
+	display: grid;
+	gap: var(--space-4);
+	padding: var(--space-5);
+	background: var(--paper-raised);
+	border: 1.5px solid var(--rule);
+}
+
+.claim-file-title {
+	font-size: var(--step-1);
+}
+
+.claim-file-intro {
+	margin: 0;
+	font-size: var(--step--1);
+	line-height: 1.5;
+	color: var(--ink-soft);
+}
+
+.claim-group {
+	display: grid;
+	gap: var(--space-1);
+	min-width: 0;
+	margin: 0;
+	padding: var(--space-3) 0 0;
+	border: 0;
+	border-top: 1px solid var(--rule-soft);
+}
+
+.claim-group legend {
+	float: left;
+	width: 100%;
+	padding: 0;
+	margin-bottom: var(--space-1);
+	font-weight: 700;
+	font-size: var(--step--1);
+}
+
+.claim-choice {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	min-height: 2.25rem;
+	font-size: var(--step--1);
+	cursor: pointer;
+}
+
+.claim-choice input {
+	flex: none;
+	width: 1.05rem;
+	height: 1.05rem;
+	margin: 0;
+	accent-color: var(--ink);
+}
+
+.claim-range-label {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-3);
+	font-weight: 700;
+	font-size: var(--step--1);
+}
+
+.claim-range-label output {
+	font-weight: 650;
+	font-variant-numeric: tabular-nums;
+}
+
+.claim-group input[type="range"] {
+	width: 100%;
+	min-height: 2rem;
+	margin: 0;
+	accent-color: var(--ink);
+}
+
+.claim-hint {
+	margin: 0;
+	font-size: 0.8rem;
+	color: var(--ink-soft);
+}
+
+.claim-status {
+	margin: 0;
+	font-size: var(--step--1);
+	line-height: 1.45;
+	color: var(--ink-soft);
+}
+
+.claim-status[data-changed] {
+	color: var(--check);
+	font-weight: 600;
+}
+
+/* Graph: sits on the grid paper. Ruled nodes are code, freehand nodes are model steps. */
+
+.claims-graph {
+	height: 720px;
+	min-width: 0;
+}
+
+.claims-graph .react-flow__pane,
+.claims-graph .react-flow__node {
+	cursor: default;
+}
+
+.claims-graph .react-flow__node {
+	cursor: pointer;
+}
+
+.claim-node {
+	position: relative;
+	display: grid;
+	align-content: center;
+	gap: 2px;
+	width: 200px;
+	height: 60px;
+	padding: 6px 12px;
+	font-family: var(--font);
+	font-size: 13px;
+	line-height: 1.25;
+	color: var(--ink);
+	background: var(--paper-raised);
+	transition: opacity 300ms;
+}
+
+.claim-node.is-code {
+	border: 1.5px solid var(--rule);
+}
+
+.claim-node.is-model {
+	background: var(--model-tint);
+}
+
+.claim-node-title {
+	position: relative;
+	font-weight: 700;
+}
+
+.claim-node.is-model .claim-node-title {
+	color: var(--model);
+}
+
+.claim-node-kind {
+	position: relative;
+	font-size: 11px;
+	color: var(--ink-soft);
+}
+
+.claim-node[data-status="idle"] {
+	opacity: 0.6;
+}
+
+.claim-node.is-code[data-status="idle"] {
+	border-style: dashed;
+	border-color: var(--rule-soft);
+}
+
+.claim-node[data-status="skipped"] {
+	opacity: 0.32;
+}
+
+.claim-node[data-status="active"] {
+	outline: 2px solid var(--check);
+	outline-offset: 4px;
+}
+
+.claim-node[data-selected] {
+	outline: 2px solid var(--ink);
+	outline-offset: 4px;
+}
+
+.claim-node .react-flow__handle {
+	width: 1px;
+	height: 1px;
+	min-width: 0;
+	min-height: 0;
+	border: 0;
+	background: transparent;
+	opacity: 0;
+}
+
+.claims-graph .react-flow__edge-path {
+	fill: none;
+	stroke: var(--rule-soft);
+	stroke-width: 1.2;
+	stroke-dasharray: 4 4;
+	transition:
+		stroke 300ms,
+		opacity 300ms;
+}
+
+.claims-graph .react-flow__edge.is-done .react-flow__edge-path {
+	stroke: var(--rule);
+	stroke-width: 1.6;
+	stroke-dasharray: none;
+}
+
+.claims-graph .react-flow__edge.is-skipped .react-flow__edge-path {
+	opacity: 0.45;
+}
+
+.claims-graph .react-flow__attribution {
+	padding: 2px 4px;
+	font-size: 10px;
+	background: transparent;
+}
+
+.claims-graph .react-flow__attribution a {
+	color: var(--ink-soft);
+}
+
+/* Audit log */
+
+.journal h3 {
+	font-size: var(--step-2);
+}
+
+.journal-empty {
+	margin-top: var(--space-2);
+	color: var(--ink-soft);
+}
+
+.journal-list {
+	margin: var(--space-4) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.journal-entry {
+	display: grid;
+	grid-template-columns: 2rem minmax(0, 1fr);
+	column-gap: var(--space-3);
+	padding-block: var(--space-4);
+	border-top: 1.5px solid var(--rule);
+	scroll-margin-top: var(--space-6);
+	animation: journal-appear 300ms ease-out both;
+}
+
+.journal-entry[data-kind="model"] {
+	border-top: 1.5px dashed var(--model);
+}
+
+.journal-entry[data-selected] {
+	background: var(--paper-raised);
+	box-shadow:
+		-0.75rem 0 0 var(--paper-raised),
+		0.75rem 0 0 var(--paper-raised);
+}
+
+@keyframes journal-appear {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+.journal-no {
+	font-size: var(--step-1);
+	font-weight: 750;
+	line-height: 1.2;
+	font-variant-numeric: tabular-nums;
+}
+
+.journal-main {
+	min-width: 0;
+}
+
+.journal-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--space-1) var(--space-4);
+}
+
+.journal-head h4 {
+	font-size: var(--step-1);
+}
+
+.journal-kind {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+.journal-body {
+	display: grid;
+	gap: var(--space-2);
+	max-width: 62ch;
+	margin-top: var(--space-2);
+}
+
+.journal-model {
+	color: var(--model);
+}
+
+.journal-quote {
+	padding-left: var(--space-3);
+	border-left: 2px solid var(--rule-soft);
+}
+
+.journal-quote span {
+	display: block;
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+.journal-amount {
+	font-weight: 700;
+	font-size: var(--step-1);
+}
+
+.journal-checks {
+	display: grid;
+	gap: var(--space-1);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--step--1);
+}
+
+.journal-checks li {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.journal-checks li[data-passed="false"] span {
+	color: var(--check);
+	font-weight: 600;
+}
+
+.journal-valid {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin-top: var(--space-2);
+	font-size: var(--step--1);
+	color: var(--check);
+}
+
+.journal-note {
+	margin-top: var(--space-1);
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+.journal-rule {
+	margin-block: var(--space-2);
+	font-size: var(--step--1);
+}

@@ -1,0 +1,27 @@
+---
+title: Auditable claims-processing agent
+org: Relyens
+period: since December 2025
+summary: Co-designed the group's first agentic product. Claim handling is modeled as a graph, with typed inputs and outputs at every step so the reasoning can be audited.
+---
+import ClaimsAgent from "../../../components/demos/claims-agent/ClaimsAgent.tsx";
+
+## The problem
+
+At an insurer, every decision on a claim has to be justified: to the policyholder, to an auditor, sometimes to a judge. An agent that "reasons" in one block cannot do that: you see the answer, not the path.
+
+## The approach
+
+The business process becomes a graph. Each step takes and returns typed data, checked against a schema, so every decision can be replayed and verified.
+
+Steps that follow rules (deadlines, ceilings, mandatory documents) are code. Only the steps that require reading and interpreting (classifying a document, analyzing circumstances, drafting a letter) go to a model, and code checks their output before moving on.
+
+## The demo
+
+Change the claim: remove a document, extend the delay, switch the circumstances. The path changes, and the audit log shows why.
+
+<ClaimsAgent client:visible lang="en" />
+
+## What the demo simplifies
+
+The claim and the policy are fictional. The outputs of the model steps are precomputed: no language model runs in your browser. The real system was tested against the actual business APIs.

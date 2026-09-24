@@ -1,0 +1,787 @@
+/* « Vrai ou synthétique ? »: paper batches, a blue generator, red controls. */
+
+.g-pastry {
+	--g-pastry-tint: #e4e8e0;
+	--g-pastry-model-tint: #d9e5ef;
+
+	container-type: inline-size;
+	display: grid;
+	gap: 0.8rem;
+	color: var(--ink);
+}
+
+.g-pastry [hidden] {
+	display: none;
+}
+
+.g-pastry :is(button, input):focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 3px;
+}
+
+/* Progress and tally. */
+
+.g-pastry-top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.4rem 1rem;
+}
+
+.g-pastry-progress {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	color: var(--ink-soft);
+}
+
+.g-pastry-tally {
+	display: flex;
+	gap: 0.3rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.g-pastry-tally li {
+	display: grid;
+	place-items: center;
+	width: 1.45rem;
+	height: 1.45rem;
+	font-weight: 900;
+	font-size: 0.85rem;
+	color: var(--check);
+	border: 1.5px dashed var(--ink-soft);
+	border-radius: 2px;
+}
+
+.g-pastry-tally li[data-state="current"] {
+	border-style: solid;
+	border-color: var(--ink);
+}
+
+.g-pastry-tally li[data-state="right"],
+.g-pastry-tally li[data-state="wrong"] {
+	border-style: solid;
+	border-color: var(--check);
+}
+
+/* Yellow notes: the rules. */
+
+.g-pastry-note {
+	padding: 0.55rem 0.75rem;
+	font-size: 0.88rem;
+	line-height: 1.4;
+	background: #fff3cf;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	transform: rotate(-0.4deg);
+}
+
+.g-pastry-note small {
+	display: block;
+	margin-top: 0.2rem;
+	font-size: 0.76rem;
+	color: var(--ink-soft);
+}
+
+/* The two batches. */
+
+.g-pastry-quiz {
+	display: grid;
+	gap: 0.8rem;
+}
+
+.g-pastry-pair,
+.g-pastry-choices {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.7rem;
+}
+
+.g-pastry-batch {
+	position: relative;
+	display: grid;
+	align-content: start;
+	gap: 0.35rem;
+	min-width: 0;
+	padding: 0.55rem 0.6rem 0.6rem;
+	background: #ffffff;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.g-pastry-batch h3 {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.92rem;
+	font-weight: 800;
+}
+
+.g-pastry-cake {
+	flex: none;
+	width: 1.15rem;
+	height: 1.15rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.g-pastry-tag {
+	--mono: 1;
+	margin-left: auto;
+	font-family: var(--font-mono);
+	font-size: 0.68rem;
+	font-weight: 500;
+	color: var(--ink-soft);
+}
+
+.g-pastry-chart {
+	display: block;
+	width: 100%;
+	height: auto;
+	overflow: visible;
+}
+
+.g-pastry-bar {
+	fill: var(--g-pastry-tint);
+	stroke: var(--ink);
+	stroke-width: 1;
+	vector-effect: non-scaling-stroke;
+}
+
+.g-pastry-axis-line {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 1.5;
+	vector-effect: non-scaling-stroke;
+}
+
+.g-pastry-dot {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 1.2;
+	vector-effect: non-scaling-stroke;
+}
+
+.g-pastry-trend {
+	stroke: var(--check);
+	stroke-width: 2;
+	stroke-dasharray: 5 4;
+	vector-effect: non-scaling-stroke;
+}
+
+.g-pastry-axis {
+	--mono: 1;
+	display: flex;
+	justify-content: space-between;
+	gap: 0.3rem;
+	font-family: var(--font-mono);
+	font-size: 0.66rem;
+	line-height: 1.3;
+	color: var(--ink-soft);
+}
+
+.g-pastry-axis span:nth-child(2) {
+	text-align: center;
+}
+
+.g-pastry-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.8rem;
+}
+
+.g-pastry-table th {
+	padding: 0 0.2rem 0.2rem;
+	font-size: 0.68rem;
+	font-weight: 650;
+	text-align: right;
+	color: var(--ink-soft);
+	border-bottom: 1.5px solid var(--ink);
+}
+
+.g-pastry-table td {
+	--mono: 1;
+	padding: 0.14rem 0.2rem;
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+	border-bottom: 1px solid var(--g-pastry-tint);
+}
+
+/* After the reveal: what the model wrote turns blue, the control marks in red. */
+
+.g-pastry-batch.is-synthetic .g-pastry-cake {
+	stroke: var(--model);
+}
+
+.g-pastry-batch.is-synthetic .g-pastry-bar {
+	fill: var(--g-pastry-model-tint);
+	stroke: var(--model);
+}
+
+.g-pastry-batch.is-synthetic .g-pastry-dot {
+	fill: var(--g-pastry-model-tint);
+	stroke: var(--model);
+}
+
+.g-pastry-batch.is-synthetic .g-pastry-table td {
+	--casl: 1;
+	color: var(--model);
+}
+
+.g-pastry-batch .g-pastry-table td.is-faulty {
+	font-weight: 850;
+	color: var(--check);
+	outline: 2px solid var(--check);
+	outline-offset: -2px;
+	border-radius: 999px;
+}
+
+.g-pastry-stamp {
+	position: absolute;
+	top: 55%;
+	left: 50%;
+	padding: 0.1rem 0.45rem;
+	font-weight: 900;
+	font-size: 0.82rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: var(--check);
+	background: rgb(255 255 255 / 0.86);
+	border: 3px double var(--check);
+	opacity: 0;
+	transform: translate(-50%, -50%) rotate(-11deg) scale(2.2);
+	pointer-events: none;
+}
+
+.g-pastry-stamp.is-visible {
+	opacity: 0.92;
+	transform: translate(-50%, -50%) rotate(-11deg) scale(1);
+	transition:
+		opacity 120ms,
+		transform 240ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* Buttons. */
+
+.g-pastry-choice {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-height: 2.9rem;
+	padding: 0.5rem 0.7rem;
+	font: inherit;
+	font-size: 0.92rem;
+	font-weight: 750;
+	text-align: left;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+	cursor: pointer;
+	transition:
+		transform 120ms,
+		box-shadow 120ms;
+}
+
+.g-pastry-choice:hover:not(:disabled) {
+	transform: translate(-2px, -2px);
+	box-shadow: 5px 5px 0 var(--ink);
+}
+
+.g-pastry-choice:disabled {
+	cursor: default;
+	opacity: 0.5;
+}
+
+.g-pastry-choice.is-chosen {
+	opacity: 1;
+	background: #fff3cf;
+	transform: translate(2px, 2px);
+	box-shadow: 1px 1px 0 var(--ink);
+}
+
+.g-pastry-choice kbd {
+	--mono: 1;
+	padding: 0 0.35rem;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	border: 1px solid var(--ink-soft);
+	border-radius: 2px;
+}
+
+@media (hover: none) {
+	.g-pastry-choice kbd {
+		display: none;
+	}
+}
+
+.g-pastry-primary {
+	justify-self: start;
+	padding: 0.5rem 0.9rem;
+	font: inherit;
+	font-weight: 750;
+	color: var(--paper);
+	background: var(--ink);
+	border: 2px solid var(--ink);
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.g-pastry-link {
+	padding: 0;
+	font: inherit;
+	font-weight: 700;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+	cursor: pointer;
+}
+
+/* The reveal. */
+
+.g-pastry-reveal {
+	display: grid;
+	gap: 0.4rem;
+	padding-top: 0.7rem;
+	border-top: 1.5px dashed var(--ink);
+}
+
+.g-pastry-verdict {
+	font-weight: 850;
+	font-size: 1.02rem;
+}
+
+.g-pastry-verdict[data-right="false"] {
+	color: var(--check);
+}
+
+.g-pastry-clue {
+	max-width: 62ch;
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
+
+.g-pastry-clue strong {
+	font-weight: 800;
+}
+
+.g-pastry-proof {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.78rem;
+	line-height: 1.45;
+}
+
+.g-pastry-proof b {
+	margin-right: 0.45rem;
+	font-weight: 800;
+	color: var(--check);
+}
+
+.g-pastry-reveal .g-pastry-primary {
+	margin-top: 0.3rem;
+}
+
+/* The bench: one slider, two controls. */
+
+.g-pastry-bench {
+	display: grid;
+	gap: 0.8rem;
+}
+
+.g-pastry-bench h3 {
+	font-size: 1.1rem;
+	font-weight: 850;
+}
+
+.g-pastry-desk {
+	display: grid;
+	gap: 0.9rem;
+}
+
+.g-pastry-plot {
+	margin: 0;
+	position: relative;
+	display: grid;
+	gap: 0.35rem;
+	padding: 0.5rem 0.55rem 0.55rem;
+	background: #ffffff;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.g-pastry-real {
+	fill: #ffffff;
+	stroke: var(--ink);
+	stroke-width: 1.2;
+	vector-effect: non-scaling-stroke;
+}
+
+.g-pastry-fake {
+	fill: var(--model);
+	fill-opacity: 0.8;
+}
+
+.g-pastry-ring {
+	fill: none;
+	stroke: var(--check);
+	stroke-width: 1.8;
+	vector-effect: non-scaling-stroke;
+	opacity: 0;
+	transform: scale(1.9);
+	transform-box: fill-box;
+	transform-origin: center;
+}
+
+.g-pastry-ring.is-on {
+	opacity: 1;
+	transform: none;
+	transition:
+		opacity 120ms,
+		transform 200ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.g-pastry-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.15rem 0.9rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 0.74rem;
+	color: var(--ink-soft);
+}
+
+.g-pastry-legend li {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.g-pastry-legend svg {
+	width: 0.8rem;
+	height: 0.8rem;
+	overflow: visible;
+}
+
+.g-pastry-controls {
+	display: grid;
+	align-content: start;
+	gap: 0.85rem;
+}
+
+.g-pastry-dial {
+	display: grid;
+	gap: 0.2rem;
+}
+
+.g-pastry-dial-head {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.5rem;
+	font-size: 0.9rem;
+	font-weight: 750;
+}
+
+.g-pastry-dial-head output {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+.g-pastry-track {
+	position: relative;
+	margin-top: 1.1rem;
+}
+
+/* Inset by half a thumb, so the band lines up with the values under the thumb's center. */
+.g-pastry-rail {
+	position: absolute;
+	inset: 0 10px;
+	pointer-events: none;
+}
+
+.g-pastry-zone {
+	position: absolute;
+	top: 50%;
+	height: 26px;
+	background: var(--lamp);
+	border: 1.5px dashed var(--ink);
+	border-radius: 2px;
+	transform: translateY(-50%);
+}
+
+.g-pastry-zone span {
+	position: absolute;
+	bottom: calc(100% + 2px);
+	left: 50%;
+	font-size: 0.7rem;
+	font-weight: 750;
+	white-space: nowrap;
+	transform: translateX(-50%);
+}
+
+.g-pastry-range {
+	position: relative;
+	display: block;
+	width: 100%;
+	height: 30px;
+	margin: 0;
+	background: transparent;
+	cursor: pointer;
+	appearance: none;
+	-webkit-appearance: none;
+}
+
+.g-pastry-range:disabled {
+	cursor: default;
+}
+
+.g-pastry-range::-webkit-slider-runnable-track {
+	height: 8px;
+	background: rgb(228 232 224 / 0.75);
+	border-radius: 2px;
+	box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.g-pastry-range::-moz-range-track {
+	height: 8px;
+	background: rgb(228 232 224 / 0.75);
+	border-radius: 2px;
+	box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.g-pastry-range::-webkit-slider-thumb {
+	box-sizing: border-box;
+	width: 20px;
+	height: 20px;
+	margin-top: -6px;
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 2px 2px 0 var(--ink);
+	appearance: none;
+	-webkit-appearance: none;
+}
+
+.g-pastry-range::-moz-range-thumb {
+	box-sizing: border-box;
+	width: 20px;
+	height: 20px;
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 2px 2px 0 var(--ink);
+}
+
+.g-pastry-ends {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.5rem;
+	font-size: 0.74rem;
+	color: var(--ink-soft);
+}
+
+.g-pastry-checks {
+	display: grid;
+	gap: 0.7rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.g-pastry-check {
+	display: grid;
+	gap: 0.25rem;
+}
+
+.g-pastry-check-head {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4rem;
+	font-size: 0.88rem;
+	font-weight: 750;
+}
+
+.g-pastry-mark {
+	flex: none;
+	width: 1rem;
+	font-weight: 900;
+	color: var(--check);
+}
+
+.g-pastry-value {
+	--mono: 1;
+	margin-left: auto;
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+.g-pastry-gauge {
+	position: relative;
+	height: 10px;
+	background: var(--g-pastry-tint);
+	border-radius: 2px;
+	box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.g-pastry-fill {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	background: var(--ink);
+	border-radius: 2px;
+}
+
+/* A failed control shows in red, on top of its ✗ and its text. */
+.g-pastry-check[data-pass="false"] .g-pastry-fill {
+	background: var(--check);
+}
+
+.g-pastry-threshold {
+	position: absolute;
+	top: -4px;
+	bottom: -4px;
+	width: 2px;
+	margin-left: -1px;
+	background: var(--check);
+}
+
+.g-pastry-detail {
+	font-size: 0.74rem;
+	line-height: 1.35;
+	color: var(--ink-soft);
+}
+
+.g-pastry-status {
+	min-height: 1.4em;
+	font-size: 0.9rem;
+	font-weight: 750;
+	line-height: 1.4;
+}
+
+.g-pastry-status[data-tone="bad"] {
+	color: var(--check);
+}
+
+.g-pastry-serve {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
+
+/* The end. */
+
+.g-pastry-end {
+	display: grid;
+	gap: 0.55rem;
+	max-width: 38rem;
+	padding: 0.3rem 0 0.2rem;
+}
+
+.g-pastry-end h3 {
+	font-size: 1.45rem;
+	font-weight: 850;
+}
+
+.g-pastry-score {
+	font-size: 1.12rem;
+	font-weight: 750;
+}
+
+.g-pastry-recap {
+	display: grid;
+	gap: 0.15rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 0.92rem;
+}
+
+.g-pastry-recap-mark {
+	display: inline-block;
+	width: 1.2rem;
+	font-weight: 900;
+	color: var(--check);
+}
+
+.g-pastry-setting {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.82rem;
+}
+
+.g-pastry-project {
+	line-height: 1.5;
+}
+
+.g-pastry-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 1rem;
+	margin-top: 0.3rem;
+}
+
+/* Wide panel: the chart and its controls side by side. */
+
+@container (min-width: 36rem) {
+	.g-pastry-desk {
+		grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+		align-items: start;
+	}
+}
+
+/* Narrow panel, down to 360 px screens. */
+
+@container (max-width: 24rem) {
+	.g-pastry-pair,
+	.g-pastry-choices {
+		gap: 0.5rem;
+	}
+
+	.g-pastry-batch {
+		padding: 0.45rem 0.4rem 0.5rem;
+	}
+
+	.g-pastry-table {
+		font-size: 0.74rem;
+	}
+
+	.g-pastry-table th,
+	.g-pastry-table td {
+		padding-inline: 0.1rem;
+	}
+
+	.g-pastry-stamp {
+		font-size: 0.7rem;
+		letter-spacing: 0.03em;
+	}
+
+	.g-pastry-choice {
+		padding: 0.45rem 0.55rem;
+		font-size: 0.86rem;
+	}
+}
+
+/* Reduced motion: no transition at all. */
+
+.g-pastry.is-still *,
+.g-pastry.is-still .g-pastry-stamp.is-visible,
+.g-pastry.is-still .g-pastry-ring.is-on {
+	transition: none;
+}

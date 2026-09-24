@@ -1,0 +1,668 @@
+/* « Rien ne sort » : a closed room where the model comes to the data. */
+
+.g-coldroom {
+	container: coldroom / inline-size;
+	position: relative;
+	display: grid;
+	gap: 0.85rem;
+	color: var(--ink);
+}
+
+.g-coldroom .cr-sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* The room: its door, and the two counters of what goes in and out. */
+
+.g-coldroom .cr-room {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.8rem 1.2rem;
+	padding: 0.6rem 0.9rem;
+	background: #fff;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.g-coldroom .cr-door {
+	position: relative;
+	display: grid;
+	justify-items: center;
+	gap: 0.2rem;
+	flex: none;
+}
+
+.g-coldroom .cr-door-art svg {
+	display: block;
+	width: 46px;
+	height: 62px;
+	overflow: visible;
+}
+
+.g-coldroom .cr-frame {
+	fill: #fff;
+	stroke: var(--ink);
+	stroke-width: 2;
+}
+
+.g-coldroom .cr-leaf-face {
+	fill: var(--paper);
+	stroke: var(--ink);
+	stroke-width: 1.5;
+}
+
+.g-coldroom .cr-frost {
+	fill: none;
+	stroke: var(--ink-soft);
+	stroke-width: 1.2;
+	stroke-linecap: round;
+}
+
+.g-coldroom .cr-plate {
+	fill: #fff;
+	stroke: var(--ink);
+	stroke-width: 1.3;
+}
+
+.g-coldroom .cr-lever {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 3;
+	stroke-linecap: round;
+}
+
+.g-coldroom .cr-bolt,
+.g-coldroom .cr-hinge {
+	fill: var(--ink);
+}
+
+.g-coldroom .cr-door-caption {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.66rem;
+	color: var(--ink-soft);
+}
+
+/* The door's stamp is a check: red, and only when the door refuses. */
+.g-coldroom .cr-door-stamp {
+	position: absolute;
+	top: 22px;
+	left: 50%;
+	padding: 0.05rem 0.35rem;
+	font-weight: 900;
+	font-size: 0.78rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: var(--check);
+	background: rgb(255 255 255 / 0.88);
+	border: 3px double var(--check);
+	opacity: 0;
+	transform: translateX(-50%) rotate(-12deg) scale(2.2);
+	pointer-events: none;
+}
+
+.g-coldroom .cr-door-stamp.is-visible {
+	opacity: 0.95;
+	transform: translateX(-50%) rotate(-12deg) scale(1);
+	transition:
+		opacity 120ms,
+		transform 240ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.g-coldroom.is-still .cr-door-stamp.is-visible {
+	transition: none;
+}
+
+.g-coldroom .cr-meters {
+	display: flex;
+	flex: 1 1 13rem;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 1.4rem;
+	margin: 0;
+}
+
+.g-coldroom .cr-meter {
+	display: grid;
+	gap: 0.1rem;
+}
+
+.g-coldroom .cr-meter dt {
+	font-size: 0.76rem;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-meter dd {
+	--mono: 1;
+	margin: 0;
+	font-family: var(--font-mono);
+	font-size: 1.3rem;
+	font-weight: 800;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+/* The outgoing counter is a control, hence the red frame. */
+.g-coldroom .cr-meter-out {
+	padding: 0.25rem 0.6rem 0.3rem;
+	border: 3px double var(--check);
+	border-radius: 2px;
+}
+
+.g-coldroom .cr-out-ok {
+	margin-left: 0.35rem;
+	font-size: 1rem;
+	color: var(--check);
+}
+
+/* Two columns: the report with its instructions, then the sheet. */
+
+.g-coldroom .cr-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+	align-items: start;
+	gap: 0.9rem 1rem;
+}
+
+/* A plain block, not a grid: the sticky note needs the whole column to slide along. */
+.g-coldroom .cr-doc {
+	display: block;
+}
+
+.g-coldroom .cr-task {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	margin-bottom: 0.75rem;
+	padding: 0.65rem 0.85rem 0.75rem;
+	background: #fff3cf;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.g-coldroom .cr-step {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-ask {
+	margin-top: 0.1rem;
+	font-size: 1.15rem;
+	font-weight: 850;
+	line-height: 1.2;
+}
+
+.g-coldroom .cr-hint {
+	margin-top: 0.15rem;
+	font-size: 0.85rem;
+	line-height: 1.35;
+}
+
+.g-coldroom .cr-said {
+	margin-top: 0.5rem;
+	padding-top: 0.45rem;
+	font-size: 0.84rem;
+	line-height: 1.4;
+	border-top: 1.5px dashed var(--ink);
+}
+
+.g-coldroom .cr-said-player {
+	font-weight: 700;
+}
+
+.g-coldroom .cr-said[data-right="false"] .cr-said-player {
+	color: var(--check);
+}
+
+.g-coldroom .cr-said-model {
+	margin-top: 0.1rem;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-said-model:empty {
+	display: none;
+}
+
+/* The temptation: the loudest button on screen, on purpose. */
+
+.g-coldroom .cr-offer {
+	margin-top: 0.6rem;
+}
+
+.g-coldroom .cr-tempt {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	width: 100%;
+	padding: 0.5rem 0.7rem;
+	font: inherit;
+	font-size: 0.86rem;
+	font-weight: 750;
+	line-height: 1.25;
+	text-align: left;
+	color: var(--ink);
+	background: var(--lamp);
+	border: 1.5px dashed var(--ink);
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.g-coldroom .cr-tempt:hover:not(:disabled) {
+	border-style: solid;
+	box-shadow: 3px 3px 0 var(--ink);
+	transform: translate(-1px, -1px);
+}
+
+.g-coldroom .cr-tempt:disabled {
+	cursor: default;
+}
+
+.g-coldroom:not(.is-still) .cr-tempt {
+	transition:
+		transform 120ms,
+		box-shadow 120ms;
+}
+
+.g-coldroom .cr-tempt-art svg {
+	display: block;
+	width: 24px;
+	height: 16px;
+	fill: #fff;
+	stroke: var(--ink);
+	stroke-width: 1.5;
+}
+
+.g-coldroom .cr-locked {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.84rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.g-coldroom .cr-lock-art svg {
+	display: block;
+	width: 14px;
+	height: 16px;
+	fill: none;
+	stroke: var(--check);
+	stroke-width: 1.8;
+}
+
+.g-coldroom .cr-review-go,
+.g-coldroom .cr-again {
+	margin-top: 0.6rem;
+	padding: 0.5rem 0.9rem;
+	font: inherit;
+	font-weight: 750;
+	color: var(--paper);
+	background: var(--ink);
+	border: 2px solid var(--ink);
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+/* The report: raw data, so mono; every candidate passage is a button. */
+
+.g-coldroom .cr-report {
+	--mono: 1;
+	padding: 0.8rem 0.9rem 0.95rem;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	line-height: 1.8;
+	background: #fff;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.g-coldroom .cr-report-head {
+	margin-bottom: 0.45rem;
+	padding-bottom: 0.4rem;
+	font-size: 0.7rem;
+	line-height: 1.45;
+	color: var(--ink-soft);
+	border-bottom: 1.5px dashed var(--ink);
+}
+
+.g-coldroom .cr-report-title {
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.g-coldroom .cr-report > p + p {
+	margin-top: 0.3rem;
+}
+
+.g-coldroom .cr-passage {
+	max-width: 100%;
+	margin: 0;
+	padding: 0 0.15em;
+	font: inherit;
+	line-height: 1.45;
+	text-align: left;
+	white-space: normal;
+	color: inherit;
+	background: rgb(27 30 28 / 0.06);
+	border: 0;
+	border-bottom: 1.5px dotted var(--ink);
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.g-coldroom .cr-passage:hover {
+	background: #fff3cf;
+}
+
+.g-coldroom .cr-passage.is-filed {
+	background: #e9ede4;
+	border-bottom-style: solid;
+}
+
+.g-coldroom .cr-passage.is-wrong {
+	text-decoration-line: line-through;
+	text-decoration-color: var(--check);
+	text-decoration-thickness: 2px;
+}
+
+.g-coldroom .cr-badge {
+	display: inline-grid;
+	place-items: center;
+	width: 1.05rem;
+	height: 1.05rem;
+	margin-left: 0.25rem;
+	font-size: 0.62rem;
+	font-weight: 800;
+	line-height: 1;
+	vertical-align: 0.1em;
+	color: var(--paper);
+	background: var(--ink);
+	border-radius: 50%;
+}
+
+/* The sheet: the visitor in ink, the model in blue, the checks in red. */
+
+.g-coldroom .cr-sheet {
+	padding: 0.75rem 0.85rem 0.85rem;
+	background: #fff;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.g-coldroom .cr-sheet h3 {
+	font-size: 1rem;
+	font-weight: 850;
+}
+
+.g-coldroom .cr-sheet-note {
+	margin-top: 0.15rem;
+	font-size: 0.78rem;
+	line-height: 1.4;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-table {
+	width: 100%;
+	margin-top: 0.5rem;
+	table-layout: fixed;
+	border-collapse: collapse;
+	font-size: 0.8rem;
+	line-height: 1.3;
+}
+
+.g-coldroom .cr-table th,
+.g-coldroom .cr-table td {
+	padding: 0.4rem 0.3rem;
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: break-word;
+	hyphens: auto;
+	border-top: 1px solid #dfe3dc;
+}
+
+.g-coldroom .cr-table thead th {
+	padding-top: 0;
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: var(--ink-soft);
+	border-top: 0;
+}
+
+.g-coldroom .cr-table .cr-col-field {
+	width: 34%;
+}
+
+.g-coldroom .cr-table .cr-col-model {
+	--casl: 1;
+	color: var(--model);
+}
+
+.g-coldroom .cr-table tbody th {
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+/* The active row: a tint, and a bar on its edge so the cue is not color alone. */
+.g-coldroom .cr-table tr[data-state="active"] > * {
+	background: #fff3cf;
+}
+
+.g-coldroom .cr-table tr[data-state="active"] > th {
+	box-shadow: inset 3px 0 0 var(--ink);
+}
+
+.g-coldroom .cr-row-n {
+	--mono: 1;
+	margin-right: 0.3rem;
+	font-family: var(--font-mono);
+	font-size: 0.68rem;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-empty {
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-you-val {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.76rem;
+}
+
+.g-coldroom .cr-mark {
+	margin-left: 0.3rem;
+	font-weight: 900;
+	color: var(--check);
+}
+
+.g-coldroom .cr-expected {
+	display: block;
+	margin-top: 0.15rem;
+	font-size: 0.7rem;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-model-val,
+.g-coldroom .cr-reading,
+.g-coldroom .cr-ready {
+	--casl: 1;
+	color: var(--model);
+}
+
+.g-coldroom .cr-model-val {
+	font-weight: 650;
+}
+
+.g-coldroom .cr-reading {
+	font-size: 0.76rem;
+}
+
+.g-coldroom .cr-ready {
+	font-size: 0.72rem;
+}
+
+/* Written but face down: a blue hatch where the answer will be. */
+.g-coldroom .cr-masked {
+	display: inline-block;
+	width: 3rem;
+	height: 0.6em;
+	margin-right: 0.35rem;
+	vertical-align: middle;
+	background: repeating-linear-gradient(
+		-45deg,
+		var(--model) 0 2px,
+		transparent 2px 5px
+	);
+	opacity: 0.55;
+}
+
+.g-coldroom .cr-model-meta {
+	display: block;
+	margin-top: 0.15rem;
+	font-size: 0.7rem;
+}
+
+.g-coldroom .cr-conf {
+	--mono: 1;
+	font-family: var(--font-mono);
+	color: var(--model);
+}
+
+.g-coldroom .cr-review {
+	margin-left: 0.3rem;
+	font-weight: 800;
+	color: var(--check);
+}
+
+/* The end screen takes the report's place; the sheet stays beside it for the comparison. */
+
+.g-coldroom .cr-end {
+	display: grid;
+	align-content: start;
+	gap: 0.55rem;
+}
+
+.g-coldroom .cr-end h3 {
+	font-size: 1.45rem;
+	font-weight: 850;
+}
+
+.g-coldroom .cr-score {
+	font-size: 1.1rem;
+	font-weight: 750;
+}
+
+.g-coldroom .cr-model-line,
+.g-coldroom .cr-door-line {
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
+
+.g-coldroom .cr-lesson {
+	font-size: 1.05rem;
+	font-weight: 850;
+}
+
+.g-coldroom .cr-real {
+	padding-left: 0.7rem;
+	font-size: 0.88rem;
+	line-height: 1.5;
+	border-left: 3px solid var(--ink);
+}
+
+.g-coldroom .cr-fiction {
+	font-size: 0.78rem;
+	color: var(--ink-soft);
+}
+
+.g-coldroom .cr-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem 1rem;
+}
+
+.g-coldroom .cr-back {
+	margin-top: 0.6rem;
+	padding: 0;
+	font: inherit;
+	font-weight: 700;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+	cursor: pointer;
+}
+
+/* The report trying to leave: only visible while it bounces off the door. */
+
+.g-coldroom .cr-envelope {
+	--mono: 1;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.25rem 0.5rem;
+	font-family: var(--font-mono);
+	font-size: 0.68rem;
+	white-space: nowrap;
+	color: var(--ink);
+	background: #fff;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 2px 2px 0 var(--ink);
+	pointer-events: none;
+}
+
+.g-coldroom .cr-envelope-art svg {
+	display: block;
+	width: 18px;
+	height: 13px;
+	fill: #fff;
+	stroke: var(--ink);
+	stroke-width: 1.4;
+}
+
+@container coldroom (max-width: 600px) {
+	.g-coldroom .cr-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.g-coldroom .cr-room {
+		gap: 0.6rem 0.9rem;
+		padding: 0.5rem 0.7rem;
+	}
+
+	.g-coldroom .cr-meter dd {
+		font-size: 1.1rem;
+	}
+
+	.g-coldroom .cr-ask {
+		font-size: 1.05rem;
+	}
+}
+
+/* Last on purpose: same weight as the display rules above, so hidden always wins. */
+.g-coldroom [hidden] {
+	display: none;
+}

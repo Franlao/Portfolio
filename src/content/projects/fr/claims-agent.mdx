@@ -1,0 +1,27 @@
+---
+title: Agent de traitement de sinistres auditable
+org: Relyens
+period: depuis décembre 2025
+summary: Co-conception du premier produit agentique du groupe. Le traitement d'un sinistre est modélisé en graphe, avec des entrées et des sorties typées à chaque étape pour pouvoir auditer le raisonnement.
+---
+import ClaimsAgent from "../../../components/demos/claims-agent/ClaimsAgent.tsx";
+
+## Le problème
+
+Dans une compagnie d'assurance, chaque décision sur un sinistre doit pouvoir se justifier : auprès de l'assuré, d'un auditeur, parfois d'un juge. Un agent qui « raisonne » d'un seul bloc ne le permet pas : on voit la réponse, pas le chemin.
+
+## L'approche
+
+Le processus métier devient un graphe. Chaque étape reçoit et produit des données typées, validées par un schéma, ce qui rend chaque décision rejouable et vérifiable.
+
+Les étapes qui relèvent de règles (délais, plafonds, pièces obligatoires) sont du code. Seules les étapes qui demandent de lire et d'interpréter (classer une pièce, analyser des circonstances, rédiger un courrier) sont confiées à un modèle, et le code contrôle leurs sorties avant d'aller plus loin.
+
+## La démo
+
+Modifiez le dossier : retirez une pièce, allongez le délai, changez les circonstances. Le parcours change, et le journal d'audit montre pourquoi.
+
+<ClaimsAgent client:visible lang="fr" />
+
+## Ce que la démo simplifie
+
+Le dossier et le contrat sont fictifs. Les sorties des étapes confiées au modèle sont pré-calculées : aucun modèle de langage n'est appelé dans votre navigateur. Le système réel, lui, a été testé sur les API métier.

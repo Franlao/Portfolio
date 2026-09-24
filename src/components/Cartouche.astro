@@ -1,0 +1,121 @@
+---
+import { getTranslations, homePath, type Lang } from "../i18n/ui";
+
+interface Props {
+	lang: Lang;
+	alternates: Record<Lang, string>;
+}
+
+const { lang, alternates } = Astro.props;
+const t = getTranslations(lang);
+---
+
+<header class="sheet cartouche-wrap">
+	<div class="cartouche">
+		<div class="cell">
+			<a class="cartouche-name" href={homePath(lang)}>Solim Laokpezi</a>
+			<span class="cell-value">{t("cartouche.role")}</span>
+		</div>
+		<div class="cell">
+			<span class="cell-label">{t("cartouche.verified")}</span>
+			<span class="cell-value verified" data-verified-for aria-live="polite">{t("cartouche.verifiedEmpty")}</span>
+		</div>
+		<div class="cell">
+			<span class="cell-label">{t("cartouche.contact")}</span>
+			<span class="cell-value cell-links">
+				<a href="mailto:solim.laokpezi@outlook.fr">{t("cartouche.email")}</a>
+				<a href="https://www.linkedin.com/in/solimlaokpezi">LinkedIn</a>
+				<a href="https://github.com/Franlao">GitHub</a>
+			</span>
+		</div>
+		<nav class="cell" aria-label={t("cartouche.language")}>
+			<span class="cell-label">{t("cartouche.language")}</span>
+			<span class="cell-value cell-links">
+				<a href={alternates.fr} hreflang="fr" lang="fr" aria-current={lang === "fr" ? "page" : undefined}>FR</a>
+				<a href={alternates.en} hreflang="en" lang="en" aria-current={lang === "en" ? "page" : undefined}>EN</a>
+			</span>
+		</nav>
+	</div>
+</header>
+
+<script>
+	import { $verifiedFor } from "../lib/offer/store";
+
+	const target = document.querySelector<HTMLElement>("[data-verified-for]");
+	if (target) {
+		const empty = target.textContent ?? "";
+		$verifiedFor.subscribe((value) => {
+			target.textContent = value ?? empty;
+			target.classList.toggle("is-set", value !== null);
+		});
+	}
+</script>
+
+<style>
+	.cartouche-wrap {
+		padding-top: var(--space-4);
+	}
+
+	.cartouche {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1px;
+		background: var(--rule);
+		border: 1.5px solid var(--rule);
+	}
+
+	@media (min-width: 900px) {
+		.cartouche {
+			grid-template-columns: 1.3fr 1.5fr 1.3fr 0.6fr;
+		}
+	}
+
+	.cell {
+		display: grid;
+		align-content: start;
+		gap: 0.1rem;
+		min-width: 0;
+		padding: var(--space-2) var(--space-3);
+		background: var(--paper-raised);
+	}
+
+	.cell-label {
+		font-size: 0.75rem;
+		color: var(--ink-soft);
+	}
+
+	.cell-value {
+		font-size: var(--step--1);
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+
+	.cartouche-name {
+		font-weight: 820;
+		letter-spacing: -0.01em;
+		text-decoration: none;
+	}
+
+	.cartouche-name:hover {
+		text-decoration: underline;
+	}
+
+	.verified {
+		transition: color 300ms;
+	}
+
+	.verified.is-set {
+		color: var(--check);
+	}
+
+	.cell-links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--space-3);
+	}
+
+	.cell-links a[aria-current="page"] {
+		text-decoration: none;
+		font-weight: 800;
+	}
+</style>

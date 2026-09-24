@@ -1,0 +1,1081 @@
+/* La Brigade: a ligne claire kitchen on a night-green backdrop, with paper UI. */
+
+.brigade-stage {
+	--night: #163229;
+	--paper: #fbfaf4;
+	--ink: #1b1e1c;
+	--ink-soft: #5b625d;
+	--on-night: #eef2ea;
+	--on-night-soft: #b7c5bd;
+	--check: #c0392b;
+	--model: #2c5f9e;
+	--lamp: #ffc857;
+
+	position: fixed;
+	inset: 0;
+	overflow: hidden;
+	color: var(--on-night);
+	background: var(--night);
+}
+
+.brigade-stage [hidden] {
+	/* biome-ignore lint/complexity/noImportantStyles: a hidden element must stay hidden, whatever display a game gives it. */
+	display: none !important;
+}
+
+#brigade-canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+	cursor: pointer;
+}
+
+.brigade-labels {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.intro,
+.orders,
+.ticket,
+.panel,
+.write {
+	z-index: 2;
+}
+
+.brigade-stage :focus-visible {
+	outline: 2px solid var(--lamp);
+	outline-offset: 3px;
+}
+
+/* Intro, top left. */
+
+.intro {
+	position: absolute;
+	top: 24px;
+	left: 24px;
+	max-width: 25rem;
+	pointer-events: none;
+}
+
+.intro h1 {
+	font-size: clamp(1.8rem, 1.2rem + 2vw, 2.6rem);
+	font-weight: 850;
+	letter-spacing: -0.02em;
+}
+
+.intro-role {
+	margin-top: 0.1rem;
+	font-weight: 650;
+	color: var(--lamp);
+}
+
+.intro p:last-child {
+	margin-top: 0.75rem;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	color: var(--on-night-soft);
+}
+
+/* Order tickets, bottom left. */
+
+.orders {
+	position: absolute;
+	left: 24px;
+	right: 24px;
+	bottom: 20px;
+	pointer-events: none;
+}
+
+.orders-title {
+	margin-bottom: 0.4rem;
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--on-night-soft);
+}
+
+.orders ul {
+	display: flex;
+	gap: 0.6rem;
+	margin: 0;
+	padding: 0 0 4px;
+	list-style: none;
+	overflow-x: auto;
+	pointer-events: auto;
+}
+
+.order {
+	display: grid;
+	gap: 0.1rem;
+	min-width: 9.5rem;
+	padding: 0.55rem 0.8rem 0.7rem;
+	font: inherit;
+	text-align: left;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 3px 3px 0 var(--ink);
+	cursor: pointer;
+	transition:
+		transform 150ms,
+		box-shadow 150ms;
+}
+
+.order:hover {
+	transform: translate(-2px, -2px);
+	box-shadow: 5px 5px 0 var(--ink);
+}
+
+.order:active {
+	transform: translate(2px, 2px);
+	box-shadow: 1px 1px 0 var(--ink);
+}
+
+.order:disabled {
+	cursor: progress;
+	opacity: 0.55;
+	transform: none;
+}
+
+.order-kind {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	color: var(--ink-soft);
+}
+
+.order-label {
+	font-weight: 750;
+	font-size: 0.92rem;
+	line-height: 1.25;
+}
+
+.order-write {
+	color: var(--on-night);
+	background: transparent;
+	border-style: dashed;
+	border-color: var(--on-night-soft);
+	box-shadow: none;
+}
+
+.order-write .order-kind {
+	color: var(--on-night-soft);
+}
+
+.order-write:hover {
+	box-shadow: none;
+	border-color: var(--lamp);
+}
+
+/* Floating station tags: paper labels with a printed offset shadow. */
+
+.tag {
+	display: grid;
+	gap: 0.05rem;
+	max-width: 11rem;
+	padding: 0.3rem 0.55rem 0.35rem;
+	font: inherit;
+	font-size: 0.72rem;
+	line-height: 1.25;
+	text-align: left;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	box-shadow: 2px 2px 0 var(--ink);
+	cursor: pointer;
+	pointer-events: auto;
+	transition:
+		transform 200ms,
+		background 300ms;
+}
+
+.tag:hover {
+	transform: translateY(-2px);
+}
+
+.tag-name {
+	font-weight: 800;
+}
+
+.tag-project {
+	color: var(--ink-soft);
+}
+
+.tag-score:empty {
+	display: none;
+}
+
+.tag-score {
+	font-weight: 850;
+	font-size: 0.95rem;
+	color: var(--check);
+	font-variant-numeric: tabular-nums;
+}
+
+.tag.is-lit {
+	background: #fff3cf;
+}
+
+.tag.is-best {
+	border-color: var(--check);
+	box-shadow: 3px 3px 0 var(--check);
+	transform: scale(1.08);
+}
+
+.is-visiting .tag {
+	opacity: 0.35;
+}
+
+/* Speech bubbles: hand-lettered, like a comic. */
+
+.bubble {
+	--casl: 1;
+	position: relative;
+	padding: 0.25rem 0.65rem;
+	font-weight: 800;
+	font-size: 0.9rem;
+	white-space: nowrap;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	border-radius: 14px;
+	opacity: 0;
+	transform: scale(0.6) translateY(8px);
+	transition:
+		opacity 150ms,
+		transform 220ms cubic-bezier(0.3, 1.6, 0.5, 1);
+	pointer-events: none;
+}
+
+.bubble::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: -8px;
+	width: 12px;
+	height: 12px;
+	background: var(--paper);
+	border-right: 2px solid var(--ink);
+	border-bottom: 2px solid var(--ink);
+	transform: translateX(-50%) rotate(45deg);
+}
+
+.bubble.is-visible {
+	opacity: 1;
+	transform: none;
+}
+
+/* The chef's stamp. */
+
+.stamp {
+	padding: 0.2rem 0.6rem;
+	font-weight: 900;
+	font-size: 1.3rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--check);
+	border: 3px double var(--check);
+	border-radius: 4px;
+	opacity: 0;
+	transform: rotate(-12deg) scale(2.4);
+	pointer-events: none;
+}
+
+.stamp.is-visible {
+	opacity: 0.92;
+	transform: rotate(-12deg) scale(1);
+	transition:
+		opacity 120ms,
+		transform 260ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* The printed order ticket, top right. */
+
+.ticket {
+	--mono: 1;
+	position: absolute;
+	top: 250px;
+	left: 24px;
+	width: 17rem;
+	padding: 1rem 1.1rem 1.6rem;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	line-height: 1.45;
+	color: var(--ink);
+	background: var(--paper);
+	box-shadow: 0 6px 0 rgb(0 0 0 / 0.25);
+	mask:
+		conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+		50% / 14px 100%;
+}
+
+.ticket-number {
+	font-weight: 800;
+}
+
+.ticket-table {
+	color: var(--ink-soft);
+	padding-bottom: 0.5rem;
+	border-bottom: 1.5px dashed var(--ink);
+}
+
+.ticket-title {
+	margin-top: 0.5rem;
+	font-weight: 800;
+	font-size: 0.9rem;
+}
+
+.ticket-lines {
+	margin: 0.4rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ticket-lines li {
+	display: grid;
+	grid-template-columns: 2.4rem minmax(0, 1fr);
+}
+
+.ticket-lines span {
+	font-weight: 800;
+}
+
+.ticket-foot {
+	margin-top: 0.6rem;
+	padding-top: 0.5rem;
+	border-top: 1.5px dashed var(--ink);
+	color: var(--ink-soft);
+}
+
+/* Panels: the served dish and the station visit. */
+
+.panel {
+	position: absolute;
+	right: 24px;
+	bottom: 24px;
+	width: min(24rem, calc(100% - 48px));
+	padding: 1.1rem 1.2rem 1.2rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	border-radius: 3px;
+	box-shadow: 5px 5px 0 var(--ink);
+}
+
+.panel h2 {
+	font-size: 1.35rem;
+	font-weight: 850;
+}
+
+.panel p {
+	margin-top: 0.4rem;
+	line-height: 1.5;
+}
+
+.panel-note {
+	font-size: 0.85rem;
+	color: var(--ink-soft);
+}
+
+.dish-list {
+	display: grid;
+	gap: 0.5rem;
+	margin: 0.7rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.dish-list button {
+	display: grid;
+	gap: 0.15rem;
+	width: 100%;
+	padding: 0.6rem 0.75rem;
+	font: inherit;
+	text-align: left;
+	color: var(--ink);
+	background: #fff3cf;
+	border: 1.5px solid var(--ink);
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.dish-list li:first-child button {
+	border-color: var(--check);
+	box-shadow: 3px 3px 0 var(--check);
+}
+
+.dish-list span {
+	font-size: 0.85rem;
+	color: var(--ink-soft);
+}
+
+.visit {
+	top: 24px;
+	bottom: auto;
+}
+
+.visit-back {
+	padding: 0;
+	margin-bottom: 0.6rem;
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+	cursor: pointer;
+}
+
+.visit-project {
+	font-weight: 700;
+	color: var(--model);
+}
+
+.visit-concept {
+	--casl: 1;
+	font-size: 1.05rem;
+}
+
+.visit-summary {
+	font-size: 0.9rem;
+	color: var(--ink-soft);
+}
+
+.visit-play {
+	display: inline-block;
+	margin-top: 0.8rem;
+	padding: 0.5rem 0.9rem;
+	font-weight: 750;
+	text-decoration: none;
+	color: var(--paper);
+	background: var(--check);
+	border: 2px solid var(--ink);
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.intro,
+.orders,
+.ticket,
+.dish {
+	transition: opacity 300ms;
+}
+
+/* Write-your-own order. */
+
+.write {
+	width: min(34rem, calc(100% - 32px));
+	padding: 1.2rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	box-shadow: 6px 6px 0 var(--ink);
+}
+
+.write::backdrop {
+	background: rgb(10 20 16 / 0.6);
+}
+
+.write label {
+	display: block;
+	font-weight: 750;
+}
+
+.write textarea {
+	width: 100%;
+	margin-top: 0.6rem;
+	padding: 0.7rem;
+	font: inherit;
+	font-size: 0.95rem;
+	border: 1.5px solid var(--ink);
+	resize: vertical;
+}
+
+.write-error {
+	min-height: 1.2em;
+	margin-top: 0.4rem;
+	font-weight: 650;
+	color: var(--check);
+}
+
+.write-actions {
+	display: flex;
+	gap: 0.8rem;
+	margin-top: 0.6rem;
+}
+
+.write-send,
+.write-cancel {
+	padding: 0.5rem 0.9rem;
+	font: inherit;
+	font-weight: 750;
+	border: 2px solid var(--ink);
+	cursor: pointer;
+}
+
+.write-send {
+	color: var(--paper);
+	background: var(--ink);
+}
+
+.write-cancel {
+	color: var(--ink);
+	background: transparent;
+}
+
+@media (max-width: 760px) {
+	.intro {
+		top: 14px;
+		left: 16px;
+		right: 16px;
+		max-width: none;
+	}
+
+	.intro p:last-child {
+		display: none;
+	}
+
+	.orders {
+		left: 16px;
+		right: 0;
+		bottom: 14px;
+	}
+
+	.ticket {
+		left: auto;
+		right: 12px;
+		width: 12.5rem;
+		font-size: 0.72rem;
+		top: 70px;
+	}
+
+	.panel {
+		left: 12px;
+		right: 12px;
+		width: auto;
+		bottom: 110px;
+	}
+
+	.visit {
+		top: auto;
+	}
+
+	.panel {
+		max-height: 48vh;
+		overflow-y: auto;
+	}
+
+	.is-served .ticket {
+		display: none;
+	}
+
+	.ticket-lines li:nth-child(n + 4),
+	.ticket-foot {
+		display: none;
+	}
+
+	.dish-list span {
+		font-size: 0.78rem;
+	}
+
+	.tag {
+		font-size: 0.62rem;
+		max-width: 8rem;
+	}
+
+	.tag-project {
+		display: none;
+	}
+}
+
+.is-visiting .ticket,
+.is-visiting .dish,
+.is-visiting .intro,
+.is-visiting .orders {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* Hover on a station. */
+
+.tag.is-hover {
+	background: #fff3cf;
+	transform: translateY(-3px);
+}
+
+/* Sound toggle, top right. */
+
+.sound-toggle {
+	position: absolute;
+	top: 20px;
+	right: 24px;
+	z-index: 2;
+	padding: 0.4rem 0.75rem;
+	font: inherit;
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: var(--on-night);
+	background: transparent;
+	border: 1.5px solid var(--on-night-soft);
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.sound-toggle[aria-pressed="true"] {
+	color: var(--ink);
+	background: var(--lamp);
+	border-color: var(--lamp);
+}
+
+.panel.visit {
+	top: 70px;
+}
+
+.visit-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	margin-top: 0.9rem;
+}
+
+.visit-actions .visit-play {
+	margin-top: 0;
+	color: var(--ink);
+	background: transparent;
+}
+
+.visit-rush {
+	padding: 0.5rem 0.9rem;
+	font: inherit;
+	font-weight: 750;
+	color: var(--paper);
+	background: var(--check);
+	border: 2px solid var(--ink);
+	box-shadow: 3px 3px 0 var(--ink);
+	cursor: pointer;
+}
+
+/* « Coup de feu au passe ». */
+
+.rush {
+	position: absolute;
+	top: 70px;
+	right: 24px;
+	max-height: calc(100% - 94px);
+	z-index: 3;
+	display: flex;
+	flex-direction: column;
+	gap: 0.9rem;
+	width: min(46rem, calc(100% - 48px));
+	padding: 1rem 1.2rem 1.2rem;
+	overflow-y: auto;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	box-shadow: 6px 6px 0 var(--ink);
+}
+
+.rush-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.4rem 1rem;
+}
+
+.rush-head h2 {
+	font-size: 1.4rem;
+	font-weight: 850;
+}
+
+.rush-progress {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	color: var(--ink-soft);
+}
+
+.rush-relax {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin-left: auto;
+	font-size: 0.85rem;
+}
+
+.rush-quit {
+	padding: 0;
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+	cursor: pointer;
+}
+
+.rush-play {
+	display: grid;
+	grid-template-columns: 13rem minmax(0, 1fr);
+	grid-template-areas:
+		"rules ticket"
+		"rules choices"
+		"rules verdict";
+	align-items: start;
+	gap: 0.9rem 1.1rem;
+}
+
+.rush-rules {
+	grid-area: rules;
+	padding: 0.8rem 0.9rem;
+	font-size: 0.82rem;
+	line-height: 1.45;
+	background: #fff3cf;
+	border: 1.5px solid var(--ink);
+	transform: rotate(-1deg);
+}
+
+.rush-rules h3 {
+	margin-bottom: 0.4rem;
+	font-size: 0.92rem;
+	font-weight: 800;
+}
+
+.rush-rules ul {
+	display: grid;
+	gap: 0.35rem;
+	margin: 0;
+	padding-left: 1rem;
+}
+
+.rush-ticket {
+	grid-area: ticket;
+	position: relative;
+	padding: 0.9rem 1rem 1rem;
+	background: #ffffff;
+	border: 1.5px solid var(--ink);
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
+.rush-story {
+	--casl: 1;
+	max-width: 30ch;
+	font-weight: 650;
+	line-height: 1.4;
+}
+
+.rush-pieces {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.2rem 1rem;
+	margin: 0.7rem 0 0;
+	padding: 0;
+	list-style: none;
+	font-size: 0.85rem;
+}
+
+.rush-pieces li[data-received="false"] {
+	color: var(--check);
+	font-weight: 700;
+}
+
+.rush-facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem 1.6rem;
+	margin: 0.7rem 0 0;
+	font-size: 0.85rem;
+}
+
+.rush-facts dt {
+	color: var(--ink-soft);
+}
+
+.rush-facts dd {
+	margin: 0;
+	font-weight: 800;
+	font-size: 1rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.rush-timer {
+	height: 6px;
+	margin-top: 0.9rem;
+	background: #dfe3dc;
+}
+
+.rush-timer span {
+	display: block;
+	height: 100%;
+	background: var(--ink);
+	transform-origin: left;
+}
+
+.rush-stamp {
+	position: absolute;
+	top: 0.8rem;
+	right: 0.9rem;
+	padding: 0.15rem 0.5rem;
+	font-weight: 900;
+	font-size: 1.05rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--check);
+	border: 3px double var(--check);
+	opacity: 0;
+	transform: rotate(-10deg) scale(2.2);
+	pointer-events: none;
+}
+
+.rush-stamp.is-visible {
+	opacity: 0.9;
+	transform: rotate(-10deg) scale(1);
+	transition:
+		opacity 120ms,
+		transform 240ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.rush-choices {
+	grid-area: choices;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.6rem;
+}
+
+.rush-choice {
+	display: grid;
+	justify-items: start;
+	gap: 0.25rem;
+	min-height: 3.6rem;
+	padding: 0.55rem 0.7rem;
+	font: inherit;
+	font-size: 0.88rem;
+	font-weight: 750;
+	line-height: 1.25;
+	text-align: left;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1.5px solid var(--ink);
+	box-shadow: 3px 3px 0 var(--ink);
+	cursor: pointer;
+	transition:
+		transform 120ms,
+		box-shadow 120ms;
+}
+
+.rush-choice:hover:not(:disabled) {
+	transform: translate(-2px, -2px);
+	box-shadow: 5px 5px 0 var(--ink);
+}
+
+.rush-choice:disabled {
+	cursor: default;
+	opacity: 0.5;
+}
+
+.rush-choices kbd {
+	--mono: 1;
+	padding: 0 0.35rem;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	border: 1px solid var(--ink-soft);
+	border-radius: 2px;
+}
+
+.rush-verdict {
+	grid-area: verdict;
+	padding-top: 0.7rem;
+	border-top: 1.5px dashed var(--ink);
+}
+
+.rush-verdict-head {
+	font-weight: 850;
+	font-size: 1.05rem;
+}
+
+.rush-verdict[data-right="false"] .rush-verdict-head {
+	color: var(--check);
+}
+
+.rush-verdict-chef {
+	margin-top: 0.25rem;
+	color: var(--model);
+	font-weight: 650;
+}
+
+.rush-reasons {
+	margin: 0.35rem 0 0;
+	padding-left: 1.1rem;
+	font-size: 0.9rem;
+}
+
+.rush-next,
+.rush-again {
+	margin-top: 0.8rem;
+	padding: 0.5rem 0.9rem;
+	font: inherit;
+	font-weight: 750;
+	color: var(--paper);
+	background: var(--ink);
+	border: 2px solid var(--ink);
+	cursor: pointer;
+}
+
+.rush-end {
+	display: grid;
+	gap: 0.5rem;
+	max-width: 36rem;
+	padding: 1rem 0;
+}
+
+.rush-end h3 {
+	font-size: 1.5rem;
+	font-weight: 850;
+}
+
+.rush-score {
+	font-size: 1.15rem;
+	font-weight: 750;
+}
+
+.rush-chef {
+	line-height: 1.5;
+	color: var(--model);
+}
+
+.rush-end-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 1rem;
+}
+
+.rush-end-actions a {
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.is-rushing .intro,
+.is-rushing .orders,
+.is-rushing .ticket,
+.is-rushing .dish {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.is-rushing .tag {
+	opacity: 0.35;
+}
+
+@media (max-width: 760px) {
+	.sound-toggle {
+		top: 16px;
+		right: 16px;
+		padding: 0.3rem 0.55rem;
+		font-size: 0.72rem;
+	}
+
+	.rush {
+		top: 12px;
+		right: 12px;
+		left: 12px;
+		bottom: 12px;
+		width: auto;
+		padding: 0.8rem;
+	}
+
+	.rush-play {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas:
+			"ticket"
+			"choices"
+			"verdict"
+			"rules";
+	}
+
+	.rush-choices {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.rush-pieces {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.rush-relax {
+		margin-left: 0;
+	}
+}
+
+/* Station mini-games share one panel; each game styles its own content. */
+
+.game {
+	position: absolute;
+	top: 70px;
+	right: 24px;
+	z-index: 3;
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+	width: min(46rem, calc(100% - 48px));
+	max-height: calc(100% - 94px);
+	padding: 1rem 1.2rem 1.2rem;
+	overflow-y: auto;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	box-shadow: 6px 6px 0 var(--ink);
+}
+
+.game-quit {
+	margin-left: auto;
+}
+
+.game-intro {
+	max-width: 60ch;
+	line-height: 1.45;
+	color: var(--ink-soft);
+}
+
+@media (max-width: 760px) {
+	.game {
+		top: 12px;
+		right: 12px;
+		left: 12px;
+		width: auto;
+		max-height: calc(100% - 24px);
+		padding: 0.8rem;
+	}
+}
+
+/* The side door for a recruiter in a hurry. */
+
+.intro-text-version {
+	margin-top: 0.3rem;
+	font-size: 0.85rem;
+	pointer-events: auto;
+}
+
+.intro-text-version a {
+	color: var(--on-night-soft);
+	text-underline-offset: 0.25em;
+}
+
+.intro-text-version a:hover {
+	color: var(--on-night);
+}
+
+/* On paper panels, the yellow focus ring is too faint: use ink instead. */
+.panel :focus-visible,
+.rush :focus-visible,
+.game :focus-visible,
+.write :focus-visible,
+.tag:focus-visible,
+.order:focus-visible {
+	outline-color: var(--ink);
+}

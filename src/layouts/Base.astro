@@ -1,0 +1,39 @@
+---
+import "../styles/global.css";
+import { getTranslations, type Lang } from "../i18n/ui";
+
+interface Props {
+	lang: Lang;
+	alternates: Record<Lang, string>;
+	title?: string;
+	description?: string;
+}
+
+const { lang, alternates } = Astro.props;
+const t = getTranslations(lang);
+const title = Astro.props.title ?? t("site.title");
+const description = Astro.props.description ?? t("site.description");
+---
+
+<!doctype html>
+<html lang={lang}>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="preload" href="/fonts/recursive-latin-casl.woff2" as="font" type="font/woff2" crossorigin />
+		<link rel="alternate" hreflang="fr" href={alternates.fr} />
+		<link rel="alternate" hreflang="en" href={alternates.en} />
+		<meta name="theme-color" content="#ecf1e6" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#191d1a" media="(prefers-color-scheme: dark)" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:locale" content={lang === "fr" ? "fr_FR" : "en_GB"} />
+	</head>
+	<body>
+		<slot />
+	</body>
+</html>

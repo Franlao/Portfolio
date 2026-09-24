@@ -1,0 +1,115 @@
+---
+import { career, education } from "../../data/career";
+import { getTranslations, homePath, type Lang } from "../../i18n/ui";
+import Base from "../../layouts/Base.astro";
+import { getProjectCards } from "../../lib/projects";
+import { frTypo } from "../../lib/typo";
+import Cartouche from "../Cartouche.astro";
+import Footer from "../Footer.astro";
+import OfferLab from "../OfferLab.tsx";
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang);
+const projects = await getProjectCards(lang);
+const alternates = { fr: homePath("fr"), en: homePath("en") };
+const typo = (text: string) => (lang === "fr" ? frTypo(text) : text);
+---
+
+<Base lang={lang} alternates={alternates}>
+	<Cartouche lang={lang} alternates={alternates} />
+	<main class="sheet">
+		<header class="sheet-row hero">
+			<h1 class="sheet-main">{t("hero.title")}</h1>
+			<p class="sheet-main hero-intro">{t("hero.intro")}</p>
+		</header>
+
+		<OfferLab client:load lang={lang} projects={projects} />
+
+		<section class="sheet-row career" aria-labelledby="career-title">
+			<h2 class="sheet-main" id="career-title">{t("career.title")}</h2>
+			<ol class="sheet-main career-list">
+				{
+					career.map((entry) => (
+						<li>
+							<span class="career-period">{entry.period[lang]}</span>
+							<div>
+								<p>
+									<strong>{entry.role}</strong>, {entry.org}
+								</p>
+								<p class="career-line">{typo(entry.line[lang])}</p>
+							</div>
+						</li>
+					))
+				}
+			</ol>
+			<p class="sheet-main career-education">
+				<strong>{t("career.education")}</strong>
+				{education.degree[lang]}, {education.school}, {lang === "fr" ? education.period : education.periodEn}
+			</p>
+		</section>
+	</main>
+	<Footer lang={lang} />
+</Base>
+
+<style>
+	.hero {
+		padding-block: var(--space-8) var(--space-2);
+	}
+
+	.hero h1 {
+		max-width: 18ch;
+	}
+
+	.hero-intro {
+		max-width: 52ch;
+		font-size: var(--step-1);
+		line-height: 1.5;
+		color: var(--ink-soft);
+	}
+
+	.career {
+		padding-block: var(--space-7) 0;
+	}
+
+	.career-list {
+		display: grid;
+		gap: var(--space-4);
+		margin: var(--space-2) 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.career-list li {
+		display: grid;
+		gap: var(--space-1) var(--space-5);
+	}
+
+	@media (min-width: 720px) {
+		.career-list li {
+			grid-template-columns: 11rem minmax(0, 1fr);
+		}
+	}
+
+	.career-period {
+		font-size: var(--step--1);
+		color: var(--ink-soft);
+		font-variant-numeric: tabular-nums;
+		padding-top: 0.15rem;
+	}
+
+	.career-line {
+		color: var(--ink-soft);
+	}
+
+	.career-education {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--space-3);
+		padding-top: var(--space-4);
+		border-top: 1px solid var(--rule-soft);
+	}
+</style>
