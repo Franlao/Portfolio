@@ -1,9 +1,14 @@
-import { cases } from "./cases";
+import type { Lang } from "../types";
+import { copy } from "./copy";
 
 /**
- * « Chasse à l'hallucination » : a writer agent answers an engineer's question from retrieved pages,
- * and cites a page for every claim. One claim is invented. The verifier confronts each claim with the
- * page it cites, text and figure alike. Everything here is pure: the game only renders what it decides.
+ * « Chasse à l'hallucination » (“Spot the hallucination”): a writer agent answers an engineer's question
+ * from retrieved pages, and cites a page for every claim. One claim is invented. The verifier confronts
+ * each claim with the page it cites, text and figure alike. Everything here is pure: the game only
+ * renders what it decides.
+ *
+ * The documents exist in French and English (cases.ts). Facts are matched by key, and a claim's value is
+ * compared with its page in the same language, so the verifier behaves identically in both.
  */
 
 export const ROUNDS = 3;
@@ -53,10 +58,27 @@ export interface Page {
 	figure: Figure;
 }
 
+/** Named spots of a page, the same in every language. */
+export type SpotName =
+	| "text"
+	| Mark
+	| "joint"
+	| "hole"
+	| "holeSpacing"
+	| "peak"
+	| "limit"
+	| "radius"
+	| "clampSpacing"
+	| "level"
+	| "interval";
+
+/** Where a value sits: a named spot, or a table row known by its label. */
+export type Spot = SpotName | { row: string };
+
 export interface Fact extends Datum {
 	where: "text" | "figure";
-	/** Where the value sits, for the verifier's note: « ligne « trappe B » », « pic »… */
-	label: string;
+	/** A tag rather than words, so the logic does not depend on the language: copy.ts words it. */
+	spot: Spot;
 }
 
 /** One sentence of the writer's answer, reduced to what can be checked. */
@@ -78,48 +100,42 @@ export interface Case {
 	claims: { truth: Claim; fake: Claim }[];
 }
 
-const countLabel: Record<Mark, string> = {
-	order: "vis comptées",
-	sensor: "capteurs comptés",
-	bolt: "boulons comptés",
-};
-
 /** Every value a figure shows, with where it shows it. */
 export function figureFacts(figure: Figure): Fact[] {
-	const fact = (datum: Datum, label: string): Fact => ({
-		...datum,
+	const fact = ({ key, value }: Datum, spot: Spot): Fact => ({
+		key,
+		value,
 		where: "figure",
-		label,
+		spot,
 	});
 	switch (figure.kind) {
 		case "table":
-			return figure.rows.map((row) => fact(row, `ligne « ${row.label} »`));
+			return figure.rows.map((row) => fact(row, { row: row.label }));
 		case "points":
-			return [fact(figure.count, countLabel[figure.mark])];
+			return [fact(figure.count, figure.mark)];
 		case "section":
-			return [fact(figure.joint, "cote du joint")];
+			return [fact(figure.joint, "joint")];
 		case "bracket":
-			return [
-				fact(figure.hole, "cote des trous"),
-				fact(figure.spacing, "entraxe coté"),
-			];
+			return [fact(figure.hole, "hole"), fact(figure.spacing, "holeSpacing")];
 		case "curve":
-			return [fact(figure.peak, "pic"), fact(figure.limit, "ligne de limite")];
+			return [fact(figure.peak, "peak"), fact(figure.limit, "limit")];
 		case "bend":
-			return [fact(figure.radius, "rayon coté")];
+			return [fact(figure.radius, "radius")];
 		case "clamps":
-			return [fact(figure.spacing, "cote entre colliers")];
+			return [fact(figure.spacing, "clampSpacing")];
 		case "level":
-			return [fact(figure.level, "voyant")];
+			return [fact(figure.level, "level")];
 		case "interval":
-			return [fact(figure.every, "intervalle coté")];
+			return [fact(figure.every, "interval")];
 	}
 }
 
 export function factsOf(page: Page): Fact[] {
 	const inText = page.text
 		.filter((segment): segment is Datum => typeof segment !== "string")
-		.map((datum): Fact => ({ ...datum, where: "text", label: "texte" }));
+		.map(
+			({ key, value }): Fact => ({ key, value, where: "text", spot: "text" }),
+		);
 	return [...inText, ...figureFacts(page.figure)];
 }
 
@@ -222,13 +238,14 @@ function fair(items: readonly Case[], fakes: number[]): boolean {
 }
 
 /**
- * Picks the questions of a game and where each invention hides.
+ * Picks the questions of a game and where each invention hides, from the documents of one language.
  * `avoid` holds the questions of the previous game, so a replay always brings something new.
+ * Both languages share ids and structure, so a seed deals the same game in either.
  */
 export function deal(
 	seed: number,
+	pool: readonly Case[],
 	avoid: readonly string[] = [],
-	pool: readonly Case[] = cases,
 ): Round[] {
 	const random = rng(seed);
 	const order = shuffle(pool, random);
@@ -261,64 +278,75 @@ export function score(results: readonly Result[]) {
 	};
 }
 
-// The verifier's words. Raw French: the game applies the typography when it displays them.
+// The verifier's words, in the language of the pages. Raw: the game typesets them when it shows them.
 
-const figureNames: Record<Figure["kind"], [string, string]> = {
-	table: ["tableau", "le tableau"],
-	points: ["schéma", "le schéma"],
-	section: ["schéma", "le schéma"],
-	bracket: ["plan", "le plan"],
-	curve: ["courbe", "la courbe"],
-	bend: ["schéma", "le schéma"],
-	clamps: ["schéma", "le schéma"],
-	level: ["schéma", "le schéma"],
-	interval: ["frise", "la frise"],
-};
-
-/** « texte » or « tableau, ligne « trappe B » » : the exact spot of a value on its page. */
-export function place(fact: Fact, page: Page): string {
-	return fact.where === "text"
-		? "texte"
-		: `${figureNames[page.figure.kind][0]}, ${fact.label}`;
+/** How a spot reads: « ligne « trappe B » », “limit line”… */
+export function spotLabel(fact: Fact, lang: Lang): string {
+	const words = copy[lang].check;
+	return typeof fact.spot === "string"
+		? words.spots[fact.spot]
+		: words.row(fact.spot.row);
 }
 
-function quoted(value: string, where: Fact["where"]): string {
-	return where === "text" ? `« ${value} »` : value;
+/** « texte » or « tableau, ligne « trappe B » » : the exact spot of a value on its page. */
+export function place(fact: Fact, page: Page, lang: Lang): string {
+	return fact.where === "text"
+		? spotLabel(fact, lang)
+		: `${copy[lang].check.figures[page.figure.kind].noun}, ${spotLabel(fact, lang)}`;
 }
 
 /** The verifier's note under a claim: always starts with ✓ or ✗, never colour alone. */
-export function note(finding: Finding, claim: Claim): string {
+export function note(finding: Finding, claim: Claim, lang: Lang): string {
+	const words = copy[lang].check;
+	// Words lifted from the text are quoted; values read off a figure are not.
+	const quoted = (value: string, where: Fact["where"]) =>
+		where === "text" ? copy[lang].quote(value) : value;
 	if (finding.ok) {
 		const { page, fact } = finding;
-		return `✓ p. ${page.number}, ${place(fact, page)} : ${quoted(fact.value, fact.where)}.`;
+		return words.ok(
+			page.number,
+			place(fact, page, lang),
+			quoted(fact.value, fact.where),
+		);
 	}
 	switch (finding.reason) {
 		case "mismatch": {
 			const { page, fact, other } = finding;
-			const found = `✗ p. ${page.number}, ${place(fact, page)} : ${quoted(fact.value, fact.where)}, pas ${quoted(claim.value, fact.where)}.`;
+			const found = words.mismatch(
+				page.number,
+				place(fact, page, lang),
+				quoted(fact.value, fact.where),
+				quoted(claim.value, fact.where),
+			);
 			return other
-				? `${found} ${claim.value}, c'est la ${other.label}.`
+				? `${found} ${words.other(claim.value, spotLabel(other, lang))}`
 				: found;
 		}
 		case "absent":
-			return `✗ p. ${finding.page.number} : rien sur ce point, ni dans le texte ni dans ${figureNames[finding.page.figure.kind][1]}.`;
+			return words.absent(
+				finding.page.number,
+				words.figures[finding.page.figure.kind].definite,
+			);
 		case "ghost":
-			return `✗ p. ${finding.cited} : cette page ne fait pas partie des pages retrouvées.`;
+			return words.ghost(finding.cited);
 	}
 }
 
 /** What kind of invention it was, for the verdict and the recap. */
-export function trap(finding: Finding): string {
-	if (finding.ok) return "aucune";
+export function trap(finding: Finding, lang: Lang): string {
+	const words = copy[lang].traps;
+	if (finding.ok) return words.none;
 	switch (finding.reason) {
 		case "mismatch":
-			if (finding.other) return "une valeur lue sur la mauvaise ligne";
+			if (finding.other) return words.misread;
 			return finding.fact.where === "text"
-				? "une valeur démentie par le texte"
-				: `une valeur démentie par ${figureNames[finding.page.figure.kind][1]}`;
+				? words.text
+				: words.figure(
+						copy[lang].check.figures[finding.page.figure.kind].definite,
+					);
 		case "absent":
-			return "une affirmation absente de la page citée";
+			return words.absent;
 		case "ghost":
-			return "une page citée qui n'est pas dans les sources";
+			return words.ghost;
 	}
 }

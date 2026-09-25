@@ -1,11 +1,12 @@
+import type { Lang } from "../types";
 import {
 	type Crate,
 	crates,
 	initialPieces,
 	type Piece,
-	type Shelf,
 	type ShelfId,
 	shelves,
+	texts,
 } from "./data";
 
 /**
@@ -14,6 +15,9 @@ import {
  * Filing a new piece rewrites only the summaries on its path to the top (its shelf, then the file);
  * a full reindex would rewrite every summary of the tree. The summaries are composed from
  * pre-written fragments, so the result is the same whichever way it is computed.
+ *
+ * Dealing, filing, checking and scoring only use ids, so they are the same in every language;
+ * only the text of the summaries and replies depends on the language.
  */
 
 export const DELIVERIES = 7;
@@ -29,6 +33,8 @@ export interface Placement {
 }
 
 export interface Reserve {
+	/** The language the model writes the summaries in. */
+	lang: Lang;
 	placements: Placement[];
 	summaries: Record<NodeId, string>;
 }
@@ -55,7 +61,7 @@ export function seeded(seed: number): () => number {
 	};
 }
 
-function shuffle<T>(items: T[], random: () => number): T[] {
+function shuffle<T>(items: readonly T[], random: () => number): T[] {
 	const out = [...items];
 	for (let i = out.length - 1; i > 0; i--) {
 		const j = Math.floor(random() * (i + 1));
@@ -66,19 +72,15 @@ function shuffle<T>(items: T[], random: () => number): T[] {
 
 /** Picks the deliveries of a game: every shelf gets at least one crate, in a random order. */
 export function deal(random: () => number, count = DELIVERIES): Crate[] {
-	const pool = shuffle(crates, random);
+	const pool: Crate[] = shuffle(crates, random);
 	const picked = shelves.map(
-		(shelf) => pool.find((crate) => crate.shelf === shelf.id) as Crate,
+		(shelf) => pool.find((crate) => crate.shelf === shelf) as Crate,
 	);
 	const rest = pool.filter((crate) => !picked.includes(crate));
 	return shuffle(
 		[...picked, ...rest.slice(0, Math.max(0, count - picked.length))],
 		random,
 	);
-}
-
-export function shelfById(id: ShelfId): Shelf {
-	return shelves.find((shelf) => shelf.id === id) as Shelf;
 }
 
 export function onShelf(placements: Placement[], id: ShelfId): Piece[] {
@@ -92,37 +94,51 @@ const capitalize = (text: string) =>
 const KEEP = 3;
 
 /** What the model writes for a shelf, from the pieces actually on it. */
-export function shelfSummary(placements: Placement[], id: ShelfId): string {
-	const gists = onShelf(placements, id).map((piece) => piece.gist);
-	if (gists.length === 0) return shelfById(id).emptyGist;
+export function shelfSummary(
+	placements: Placement[],
+	id: ShelfId,
+	lang: Lang,
+): string {
+	const words = texts[lang];
+	const gists = onShelf(placements, id).map(
+		(piece) => words.pieces[piece.id].gist,
+	);
+	if (gists.length === 0) return words.shelves[id].emptyGist;
+	const summary = `${capitalize(gists.slice(-KEEP).join(words.model.separator))}.`;
 	const older = gists.length - KEEP;
-	const text = `${capitalize(gists.slice(-KEEP).join(" ; "))}.`;
-	if (older <= 0) return text;
-	const s = older > 1 ? "s" : "";
-	return `${text} Et ${older} pièce${s} plus ancienne${s}.`;
+	return older > 0 ? `${summary} ${words.model.older(older)}` : summary;
 }
 
 /** The summary of summaries: one line per shelf. */
-export function fileSummary(placements: Placement[]): string {
+export function fileSummary(placements: Placement[], lang: Lang): string {
+	const words = texts[lang];
 	return shelves
-		.map((shelf) => {
-			const briefs = onShelf(placements, shelf.id).map((piece) => piece.brief);
+		.map((id) => {
+			const briefs = onShelf(placements, id).map(
+				(piece) => words.pieces[piece.id].brief,
+			);
 			const line =
 				briefs.length === 0
-					? shelf.emptyBrief
+					? words.shelves[id].emptyBrief
 					: briefs.length > KEEP
-						? `${briefs.length} pièces, dont ${briefs.slice(-2).join(", ")}`
+						? words.model.crowded(briefs.length, briefs.slice(-2).join(", "))
 						: briefs.join(", ");
-			return `${shelf.name} : ${line}.`;
+			return words.model.line(words.shelves[id].name, line);
 		})
 		.join("\n");
 }
 
 /** Rewrites every summary of the tree: what a full reindex does. */
-export function fullReindex(placements: Placement[]): Record<NodeId, string> {
-	const summaries = { file: fileSummary(placements) } as Record<NodeId, string>;
-	for (const shelf of shelves) {
-		summaries[shelf.id] = shelfSummary(placements, shelf.id);
+export function fullReindex(
+	placements: Placement[],
+	lang: Lang,
+): Record<NodeId, string> {
+	const summaries = { file: fileSummary(placements, lang) } as Record<
+		NodeId,
+		string
+	>;
+	for (const id of shelves) {
+		summaries[id] = shelfSummary(placements, id, lang);
 	}
 	return summaries;
 }
@@ -135,12 +151,12 @@ export function pathToTop(shelf: ShelfId): NodeId[] {
 	return [shelf, "file"];
 }
 
-export function initialReserve(): Reserve {
+export function initialReserve(lang: Lang): Reserve {
 	const placements = initialPieces.map((piece) => ({
 		piece,
 		shelf: piece.shelf,
 	}));
-	return { placements, summaries: fullReindex(placements) };
+	return { lang, placements, summaries: fullReindex(placements, lang) };
 }
 
 /** Files a crate on a shelf and rewrites only the summaries on its path. */
@@ -149,17 +165,18 @@ export function file(
 	crate: Crate,
 	shelf: ShelfId,
 ): { reserve: Reserve; filing: Filing } {
+	const { lang } = reserve;
 	const placements = [...reserve.placements, { piece: crate, shelf }];
 	const rewritten = pathToTop(shelf);
 	const summaries = { ...reserve.summaries };
 	for (const node of rewritten) {
 		summaries[node] =
 			node === "file"
-				? fileSummary(placements)
-				: shelfSummary(placements, node);
+				? fileSummary(placements, lang)
+				: shelfSummary(placements, node, lang);
 	}
 	return {
-		reserve: { placements, summaries },
+		reserve: { lang, placements, summaries },
 		filing: {
 			crate,
 			shelf,
@@ -176,8 +193,6 @@ export function tally(filings: Filing[]) {
 		incremental: filings.reduce((sum, f) => sum + f.rewritten.length, 0),
 	};
 }
-
-export const NOT_FOUND = "Je ne trouve pas cette information dans le dossier.";
 
 export interface Check {
 	crate: Crate;
@@ -198,6 +213,7 @@ export function control(
 	filings: Filing[],
 	count = CHECKS,
 ): Check[] {
+	const words = texts[reserve.lang];
 	const ordered = [
 		...filings.filter((f) => !f.right),
 		...filings.filter((f) => f.right),
@@ -212,7 +228,7 @@ export function control(
 			target,
 			placedIn: shelf,
 			found,
-			reply: found ? crate.answer : NOT_FOUND,
+			reply: found ? words.pieces[crate.id].answer : words.model.notFound,
 		};
 	});
 }

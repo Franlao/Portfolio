@@ -1,16 +1,14 @@
 import gsap from "gsap";
-import type { GameContext, StationGame } from "../types";
+import type { GameContext, Lang, StationGame } from "../types";
+import { COPY, en, fr, typo } from "./copy";
 import {
 	type Answer,
 	endTexts,
 	FIELDS,
 	feedback,
-	fr,
 	modelAnswer,
 	modelLine,
-	percent,
 	pickReport,
-	REPORT_TITLE,
 	type Report,
 	type Role,
 	reportBytes,
@@ -20,6 +18,7 @@ import {
 	tokenize,
 	valueFor,
 } from "./logic";
+import { REPORTS } from "./reports";
 import "./game.css";
 
 /**
@@ -48,57 +47,65 @@ const LOCK_SVG = `<svg viewBox="0 0 16 18" focusable="false"><rect x="2" y="8" w
 
 const ENVELOPE_SVG = `<svg viewBox="0 0 20 14" focusable="false"><rect x="1" y="1" width="18" height="12" rx="1"/><path d="M1.5 1.5 10 8l8.5-6.5" fill="none"/></svg>`;
 
-const RIGHT_SAYS = ["Bien lu !", "Exact !", "Dans la fiche !"];
-const WRONG_SAYS = ["Relisez bien !", "Pas ce passage !"];
-
-const byteFormat = new Intl.NumberFormat("fr-FR");
-
-function make<K extends keyof HTMLElementTagNameMap>(
-	tag: K,
-	className = "",
-	text?: string,
-): HTMLElementTagNameMap[K] {
-	const node = document.createElement(tag);
-	if (className) node.className = className;
-	if (text !== undefined) node.textContent = fr(text);
-	return node;
-}
-
-function makeButton(className: string, text = ""): HTMLButtonElement {
-	const node = make("button", className, text);
-	node.type = "button";
-	return node;
-}
-
 function drawing(svg: string, className: string): HTMLSpanElement {
-	const wrap = make("span", className);
+	const wrap = document.createElement("span");
+	wrap.className = className;
 	wrap.setAttribute("aria-hidden", "true");
 	// Static markup written above, never visitor input.
 	wrap.innerHTML = svg;
 	return wrap;
 }
 
-/** ✓ or ✗, with a word for screen readers: the result never rests on the symbol alone. */
-function mark(right: boolean): HTMLSpanElement {
-	const wrap = make("span", "cr-mark");
-	const symbol = make("span", "", right ? "✓" : "✗");
-	symbol.setAttribute("aria-hidden", "true");
-	wrap.append(symbol, make("span", "cr-sr", right ? " juste" : " faux"));
-	return wrap;
+/** DOM helpers bound to one language: every string they write gets its typography. */
+function toolkit(lang: Lang) {
+	const copy = COPY[lang];
+	const t = typo[lang];
+
+	const make = <K extends keyof HTMLElementTagNameMap>(
+		tag: K,
+		className = "",
+		text?: string,
+	): HTMLElementTagNameMap[K] => {
+		const node = document.createElement(tag);
+		if (className) node.className = className;
+		if (text !== undefined) node.textContent = t(text);
+		return node;
+	};
+
+	const makeButton = (className: string, text = ""): HTMLButtonElement => {
+		const node = make("button", className, text);
+		node.type = "button";
+		return node;
+	};
+
+	/** ✓ or ✗, with a word for screen readers: the result never rests on the symbol alone. */
+	const mark = (right: boolean): HTMLSpanElement => {
+		const wrap = make("span", "cr-mark");
+		const symbol = make("span", "", right ? "✓" : "✗");
+		symbol.setAttribute("aria-hidden", "true");
+		wrap.append(
+			symbol,
+			make("span", "cr-sr", ` ${right ? copy.sheet.right : copy.sheet.wrong}`),
+		);
+		return wrap;
+	};
+
+	return { copy, t, make, makeButton, mark };
 }
 
 export const game: StationGame = {
-	title: "Rien ne sort",
-	intro:
-		"Remplissez la fiche en cliquant les bons passages du compte rendu, pendant qu'un modèle local remplit la sienne, sans que rien ne quitte la pièce.",
+	title: { fr: fr(COPY.fr.title), en: en(COPY.en.title) },
+	intro: { fr: fr(COPY.fr.intro), en: en(COPY.en.intro) },
 	mount(root, context) {
+		// French is the site's default language, should a page ever omit it.
+		const lang: Lang = context.lang === "en" ? "en" : "fr";
 		// Seeded per visit, so each « Rejouer » deals another report and another moment of temptation.
 		const random = seeded(Date.now() % 2 ** 32);
 		let previous: string | null = null;
 		let stop: () => void = () => {};
 		const start = (replay: boolean) => {
 			stop();
-			const report = pickReport(previous, random);
+			const report = pickReport(previous, random, REPORTS[lang]);
 			previous = report.id;
 			stop = play(root, context, report, temptAfter(random), replay, () =>
 				start(true),
@@ -109,7 +116,7 @@ export const game: StationGame = {
 	},
 };
 
-/** One game on one report. Returns its cleanup: every timer and tween it started. */
+/** One game on one report, in the report's language. Returns its cleanup: every timer and tween it started. */
 function play(
 	root: HTMLElement,
 	context: GameContext,
@@ -119,13 +126,14 @@ function play(
 	restart: () => void,
 ): () => void {
 	const { sound } = context;
+	const { copy, t, make, makeButton, mark } = toolkit(report.lang);
 	const still = context.reducedMotion;
 	const animations: gsap.core.Animation[] = [];
 	const track = <T extends gsap.core.Animation>(animation: T): T => {
 		animations.push(animation);
 		return animation;
 	};
-	const say = (text: string) => context.say(fr(text));
+	const say = (text: string) => context.say(t(text));
 
 	const total = FIELDS.length;
 	const totalBytes = reportBytes(report);
@@ -147,7 +155,7 @@ function play(
 	const live = make("p", "cr-sr");
 	live.setAttribute("aria-live", "polite");
 	const announce = (text: string) => {
-		live.textContent = fr(text);
+		live.textContent = t(text);
 	};
 
 	// The room: the door, what the model read on site, and what left (never anything).
@@ -155,25 +163,21 @@ function play(
 	const door = make("div", "cr-door");
 	const doorArt = drawing(DOOR_SVG, "cr-door-art");
 	const leaf = doorArt.querySelector<SVGGElement>(".cr-leaf");
-	const doorStamp = make("p", "cr-door-stamp", "Refusé");
+	const doorStamp = make("p", "cr-door-stamp", copy.room.stamp);
 	doorStamp.setAttribute("aria-hidden", "true");
-	door.append(
-		doorArt,
-		doorStamp,
-		make("p", "cr-door-caption", "porte de la pièce"),
-	);
+	door.append(doorArt, doorStamp, make("p", "cr-door-caption", copy.room.door));
 
 	const meters = make("dl", "cr-meters");
 	const readWrap = make("div", "cr-meter");
 	const readValue = make("dd", "", "0");
-	readWrap.append(make("dt", "", "Octets lus sur place"), readValue);
+	readWrap.append(make("dt", "", copy.room.bytesRead), readValue);
 	const outWrap = make("div", "cr-meter cr-meter-out");
 	const outValue = make("span", "", "0");
 	const outOk = make("span", "cr-out-ok", "✓");
 	outOk.setAttribute("aria-hidden", "true");
 	const outDd = make("dd");
 	outDd.append(outValue, outOk);
-	outWrap.append(make("dt", "", "Octets sortis de la pièce"), outDd);
+	outWrap.append(make("dt", "", copy.room.bytesOut), outDd);
 	meters.append(readWrap, outWrap);
 	room.append(door, meters);
 
@@ -185,25 +189,21 @@ function play(
 	const ask = make("p", "cr-ask");
 	const hint = make("p", "cr-hint");
 	const said = make("div", "cr-said");
-	const saidPlayer = make(
-		"p",
-		"cr-said-player",
-		"Cliquez, dans le compte rendu, le passage qui remplit ce champ.",
-	);
+	const saidPlayer = make("p", "cr-said-player", copy.task.instruction);
 	const saidModel = make("p", "cr-said-model");
 	said.append(saidPlayer, saidModel);
 	const offer = make("div", "cr-offer");
 	offer.hidden = true;
-	const reviewButton = makeButton("cr-review-go", "Voir le bilan");
+	const reviewButton = makeButton("cr-review-go", copy.task.results);
 	reviewButton.hidden = true;
 	task.append(step, ask, hint, said, offer, reviewButton);
 
 	// The report: plain text, with every candidate passage as a button.
 	const article = make("article", "cr-report");
-	article.setAttribute("aria-label", "Compte rendu fictif");
+	article.setAttribute("aria-label", t(copy.reportLabel));
 	const head = make("header", "cr-report-head");
 	head.append(
-		make("p", "cr-report-title", REPORT_TITLE),
+		make("p", "cr-report-title", copy.reportTitle),
 		make("p", "", `${report.service} · ${report.patient}`),
 	);
 	article.append(head);
@@ -213,7 +213,7 @@ function play(
 		for (const token of tokenize(paragraph)) {
 			const role = token.role;
 			if (!role) {
-				p.append(fr(token.text));
+				p.append(t(token.text));
 				continue;
 			}
 			const passage = makeButton("cr-passage", token.text);
@@ -230,9 +230,9 @@ function play(
 	const table = make("table", "cr-table");
 	const headRow = make("tr");
 	for (const [text, className] of [
-		["champ", "cr-col-field"],
-		["vous", "cr-col-you"],
-		["modèle local", "cr-col-model"],
+		[copy.sheet.field, "cr-col-field"],
+		[copy.sheet.you, "cr-col-you"],
+		[copy.sheet.model, "cr-col-model"],
 	]) {
 		const th = make("th", className, text);
 		th.scope = "col";
@@ -247,11 +247,11 @@ function play(
 		th.scope = "row";
 		const n = make("span", "cr-row-n", String(i + 1));
 		n.setAttribute("aria-hidden", "true");
-		th.append(n, fr(field.label));
+		th.append(n, t(copy.fields[field].label));
 		const you = make("td", "cr-you");
 		const empty = make("span", "cr-empty", "—");
 		empty.setAttribute("aria-hidden", "true");
-		you.append(empty, make("span", "cr-sr", "vide"));
+		you.append(empty, make("span", "cr-sr", copy.sheet.empty));
 		const model = make("td", "cr-model");
 		tr.append(th, you, model);
 		tbody.append(tr);
@@ -259,12 +259,8 @@ function play(
 	});
 	table.append(thead, tbody);
 	sheet.append(
-		make("h3", "", "La fiche"),
-		make(
-			"p",
-			"cr-sheet-note",
-			"Le modèle local remplit la sienne en même temps. Chaque réponse reste cachée jusqu'à la vôtre, avec sa confiance.",
-		),
+		make("h3", "", copy.sheet.heading),
+		make("p", "cr-sheet-note", copy.sheet.note),
 		table,
 	);
 
@@ -278,7 +274,7 @@ function play(
 	envelope.hidden = true;
 	envelope.append(
 		drawing(ENVELOPE_SVG, "cr-envelope-art"),
-		make("span", "", `compte rendu · ${byteFormat.format(totalBytes)} octets`),
+		make("span", "", copy.room.envelope(totalBytes)),
 	);
 
 	shell.append(room, grid, envelope, live);
@@ -288,7 +284,7 @@ function play(
 		if (revealed[i]) return;
 		const cell = rows[i].model;
 		if (!modelReady[i]) {
-			cell.replaceChildren(make("span", "cr-reading", "lecture…"));
+			cell.replaceChildren(make("span", "cr-reading", copy.sheet.reading));
 			return;
 		}
 		if (i >= answers.length) {
@@ -297,21 +293,21 @@ function play(
 			masked.setAttribute("aria-hidden", "true");
 			cell.replaceChildren(
 				masked,
-				make("span", "cr-ready", "prêt"),
-				make("span", "cr-sr", ", caché jusqu'à votre réponse"),
+				make("span", "cr-ready", copy.sheet.ready),
+				make("span", "cr-sr", `, ${copy.sheet.hidden}`),
 			);
 			return;
 		}
 		revealed[i] = true;
-		const guess = modelAnswer(report, FIELDS[i].id);
+		const guess = modelAnswer(report, FIELDS[i]);
 		const value = make("span", "cr-model-val");
 		const meta = make("span", "cr-model-meta");
-		const confidence = make("span", "cr-conf", percent(guess.confidence));
-		confidence.prepend(make("span", "cr-sr", "confiance "));
+		const confidence = make("span", "cr-conf", copy.percent(guess.confidence));
+		confidence.prepend(make("span", "cr-sr", `${copy.sheet.confidence} `));
 		meta.append(confidence, mark(guess.right));
-		if (guess.review) meta.append(make("span", "cr-review", "à relire"));
+		if (guess.review) meta.append(make("span", "cr-review", copy.sheet.review));
 		cell.replaceChildren(value, meta);
-		const text = fr(guess.value);
+		const text = t(guess.value);
 		if (still) {
 			value.textContent = text;
 			return;
@@ -339,19 +335,19 @@ function play(
 		if (modelReady[i]) return;
 		modelReady[i] = true;
 		renderModel(i);
-		// The visitor was faster on this field: complete the line that said « lit encore ».
+		// The visitor was faster on this field: complete the line that said the model was still reading.
 		if (i === answers.length - 1) {
-			const line = modelLine(report, FIELDS[i].id, answers[i].role, true);
-			saidModel.textContent = fr(line);
+			const line = modelLine(report, FIELDS[i], answers[i].role, true);
+			saidModel.textContent = t(line);
 			announce(line);
 		}
 	};
 
 	const showField = () => {
-		const field = FIELDS[current];
-		step.textContent = fr(`champ ${current + 1} sur ${total}`);
-		ask.textContent = fr(field.label);
-		hint.textContent = fr(field.hint);
+		const field = copy.fields[FIELDS[current]];
+		step.textContent = t(copy.task.step(current + 1, total));
+		ask.textContent = t(field.label);
+		hint.textContent = t(field.hint);
 		rows.forEach((row, i) => {
 			row.tr.dataset.state =
 				i < current ? "done" : i === current ? "active" : "todo";
@@ -363,7 +359,7 @@ function play(
 	// The model reads the whole report on site, and fills its sheet on its own clock.
 	let reading: gsap.core.Tween | null = null;
 	if (still) {
-		readValue.textContent = byteFormat.format(totalBytes);
+		readValue.textContent = t(copy.number(totalBytes));
 	} else {
 		const counter = { n: 0 };
 		const last = report.modelSeconds[report.modelSeconds.length - 1];
@@ -373,7 +369,7 @@ function play(
 				duration: last,
 				ease: "none",
 				onUpdate: () => {
-					readValue.textContent = byteFormat.format(Math.round(counter.n));
+					readValue.textContent = t(copy.number(Math.round(counter.n)));
 				},
 			}),
 		);
@@ -388,7 +384,7 @@ function play(
 		passage.classList.add("is-filed");
 		const badge = make("span", "cr-badge", String(index + 1));
 		badge.setAttribute("aria-hidden", "true");
-		passage.append(badge, make("span", "cr-sr", ", dans la fiche"));
+		passage.append(badge, make("span", "cr-sr", `, ${copy.sheet.filed}`));
 	};
 
 	const choose = (role: Role) => {
@@ -400,8 +396,8 @@ function play(
 
 		const already = filed.get(role);
 		if (already !== undefined) {
-			const text = `Ce passage est déjà dans la fiche, au champ « ${FIELDS[already].label} ».`;
-			saidPlayer.textContent = fr(text);
+			const text = copy.task.already(copy.fields[FIELDS[already]].label);
+			saidPlayer.textContent = t(text);
 			saidModel.textContent = "";
 			said.dataset.right = "";
 			announce(text);
@@ -409,8 +405,8 @@ function play(
 			return;
 		}
 
-		const result = feedback(report, field.id, role, modelReady[index]);
-		answers.push({ field: field.id, role, right: result.right });
+		const result = feedback(report, field, role, modelReady[index]);
+		answers.push({ field, role, right: result.right });
 		current++;
 
 		const you = rows[index].you;
@@ -420,46 +416,49 @@ function play(
 		);
 		if (!result.right) {
 			you.append(
-				make("span", "cr-expected", `attendu : ${valueFor(report, field.id)}`),
+				make(
+					"span",
+					"cr-expected",
+					copy.sheet.expected(valueFor(report, field)),
+				),
 			);
 		}
 
 		// In the report, the right passage is filed under its field number; a wrong pick is struck.
-		const expected = passages.get(field.id);
+		const expected = passages.get(field);
 		if (expected) fileUnder(expected, index);
-		filed.set(field.id, index);
+		filed.set(field, index);
 		if (!result.right) {
 			struck = passages.get(role) ?? null;
 			struck?.classList.add("is-wrong");
 		}
 
-		saidPlayer.textContent = fr(result.player);
-		saidModel.textContent = fr(result.model);
+		saidPlayer.textContent = t(result.player);
+		saidModel.textContent = t(result.model);
 		said.dataset.right = String(result.right);
 		renderModel(index);
 
 		if (result.right) {
 			sound.good();
-			say(RIGHT_SAYS[index % RIGHT_SAYS.length]);
+			say(copy.chef.right[index % copy.chef.right.length]);
 		} else {
 			sound.bad();
-			say(WRONG_SAYS[index % WRONG_SAYS.length]);
+			say(copy.chef.wrong[index % copy.chef.wrong.length]);
 		}
 
 		let news = "";
 		if (current === temptAt && !tempted) {
 			showOffer();
-			news =
-				" Nouveau : un bouton propose d'envoyer le compte rendu à un service en ligne.";
+			news = ` ${copy.announce.offer}`;
 		}
 		if (current < total) {
 			showField();
 			announce(
-				`${result.player} ${result.model} Champ suivant : ${FIELDS[current].label}.${news}`,
+				`${result.player} ${result.model} ${copy.announce.next(copy.fields[FIELDS[current]].label)}${news}`,
 			);
 		} else {
 			complete();
-			announce(`${result.player} ${result.model} Fiche remplie.`);
+			announce(`${result.player} ${result.model} ${copy.announce.filled}`);
 		}
 	};
 
@@ -467,7 +466,7 @@ function play(
 	const tempt = makeButton("cr-tempt");
 	tempt.append(
 		drawing(CLOUD_SVG, "cr-tempt-art"),
-		make("span", "", "Envoyer au service en ligne pour aller plus vite"),
+		make("span", "", copy.task.tempt),
 	);
 
 	const showOffer = () => {
@@ -493,7 +492,7 @@ function play(
 		note.tabIndex = -1;
 		note.append(
 			drawing(LOCK_SVG, "cr-lock-art"),
-			make("span", "", "Porte verrouillée : ici, le modèle vient aux données."),
+			make("span", "", copy.task.locked),
 		);
 		offer.replaceChildren(note);
 		if (hadFocus && !reviewButton.hidden) {
@@ -578,16 +577,12 @@ function play(
 		tempt.disabled = true;
 		// The request goes through the same door policy as everything else, and gets zero.
 		bytesOut += requestExit(totalBytes).bytesOut;
-		outValue.textContent = byteFormat.format(bytesOut);
-		saidPlayer.textContent = fr(
-			"Refusé par la porte : rien ne quitte la pièce.",
-		);
-		saidModel.textContent = fr("Le modèle local continue, sur place.");
+		outValue.textContent = t(copy.number(bytesOut));
+		saidPlayer.textContent = t(copy.task.refused);
+		saidModel.textContent = t(copy.task.carriesOn);
 		said.dataset.right = "";
-		announce(
-			`Refusé : la porte ne s'ouvre pas. Rien ne quitte la pièce. Octets sortis : ${bytesOut}. Le modèle local continue, sur place.`,
-		);
-		say("Rien ne quitte la pièce !");
+		announce(copy.announce.refused(bytesOut));
+		say(copy.chef.refused);
 		if (still) {
 			sound.stamp();
 			doorStamp.classList.add("is-visible");
@@ -606,9 +601,9 @@ function play(
 			row.tr.dataset.state = "done";
 			row.tr.removeAttribute("aria-current");
 		}
-		step.textContent = fr("fiche remplie");
-		ask.textContent = fr("Les deux fiches sont prêtes.");
-		hint.textContent = fr("Comparez-les dans le tableau, puis voyez le bilan.");
+		step.textContent = t(copy.task.doneStep);
+		ask.textContent = t(copy.task.doneAsk);
+		hint.textContent = t(copy.task.doneHint);
 		if (!tempted) offer.hidden = true;
 		reviewButton.hidden = false;
 		reviewButton.focus({ preventScroll: true });
@@ -616,9 +611,9 @@ function play(
 
 	const showEnd = () => {
 		const texts = endTexts(report, answers, seconds, tempted, bytesOut);
-		const again = makeButton("cr-again", "Rejouer avec un autre compte rendu");
+		const again = makeButton("cr-again", copy.end.again);
 		again.addEventListener("click", restart);
-		const back = makeButton("cr-back", "Revenir à la cuisine");
+		const back = makeButton("cr-back", copy.end.back);
 		back.addEventListener("click", () => context.close());
 		const actions = make("div", "cr-actions");
 		actions.append(again, back);
@@ -645,9 +640,9 @@ function play(
 	if (replay) {
 		room.scrollIntoView({ block: "nearest" });
 		passages.values().next().value?.focus({ preventScroll: true });
-		say("Nouveau compte rendu !");
+		say(copy.chef.replay);
 	} else {
-		say("Rien ne sort d'ici !");
+		say(copy.chef.start);
 	}
 
 	return () => {

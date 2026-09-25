@@ -78,7 +78,8 @@ export const ui = {
 		"footer.note":
 			"Conçu et développé par Solim Laokpezi. Les démos utilisent des données fictives.",
 		"footer.source": "Code source",
-		"project.back": "Retour aux projets",
+		"project.back": "Retour à la cuisine",
+		"menu.kitchen": "Entrer dans la cuisine",
 		"verified.pasted": "offre collée",
 		"verified.words": "mots",
 		"lang.switch": "Read in English",
@@ -148,7 +149,8 @@ export const ui = {
 		"footer.note":
 			"Designed and built by Solim Laokpezi. The demos use fictional data.",
 		"footer.source": "Source code",
-		"project.back": "Back to projects",
+		"project.back": "Back to the kitchen",
+		"menu.kitchen": "Enter the kitchen",
 		"verified.pasted": "pasted job description",
 		"verified.words": "words",
 		"lang.switch": "Lire en français",
@@ -169,7 +171,12 @@ export function getTranslations(lang: Lang) {
 	};
 }
 
+/** The home page: La Brigade, the 3D kitchen. */
 export const homePath = (lang: Lang) => (lang === "fr" ? "/" : "/en/");
+
+/** « La carte »: the text version of the home page, for recruiters in a hurry. */
+export const menuPath = (lang: Lang) =>
+	lang === "fr" ? "/carte/" : "/en/menu/";
 
 export const projectPath = (lang: Lang, slug: string) =>
 	lang === "fr" ? `/projets/${slug}/` : `/en/projects/${slug}/`;

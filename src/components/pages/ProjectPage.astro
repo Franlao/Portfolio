@@ -28,7 +28,7 @@ const alternates = { fr: projectPath("fr", slug), en: projectPath("en", slug) };
 	<main class="sheet">
 		<article>
 			<header class="sheet-row project-head">
-				<p class="sheet-main project-back"><a href={`${homePath(lang)}#projects`}>{t("project.back")}</a></p>
+				<p class="sheet-main project-back"><a href={homePath(lang)}>{t("project.back")}</a></p>
 				<h1 class="sheet-main">{data.title}</h1>
 				<p class="sheet-main project-meta">{data.org}, {data.period}</p>
 				<p class="sheet-main project-lede">{data.summary}</p>

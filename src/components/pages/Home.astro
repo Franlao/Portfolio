@@ -1,6 +1,6 @@
 ---
 import { career, education } from "../../data/career";
-import { getTranslations, homePath, type Lang } from "../../i18n/ui";
+import { getTranslations, homePath, type Lang, menuPath } from "../../i18n/ui";
 import Base from "../../layouts/Base.astro";
 import { getProjectCards } from "../../lib/projects";
 import { frTypo } from "../../lib/typo";
@@ -15,7 +15,7 @@ interface Props {
 const { lang } = Astro.props;
 const t = getTranslations(lang);
 const projects = await getProjectCards(lang);
-const alternates = { fr: homePath("fr"), en: homePath("en") };
+const alternates = { fr: menuPath("fr"), en: menuPath("en") };
 const typo = (text: string) => (lang === "fr" ? frTypo(text) : text);
 ---
 
@@ -23,6 +23,7 @@ const typo = (text: string) => (lang === "fr" ? frTypo(text) : text);
 	<Cartouche lang={lang} alternates={alternates} />
 	<main class="sheet">
 		<header class="sheet-row hero">
+			<p class="sheet-main hero-kitchen"><a href={homePath(lang)}>{t("menu.kitchen")}</a></p>
 			<h1 class="sheet-main">{t("hero.title")}</h1>
 			<p class="sheet-main hero-intro">{t("hero.intro")}</p>
 		</header>
@@ -58,6 +59,11 @@ const typo = (text: string) => (lang === "fr" ? frTypo(text) : text);
 <style>
 	.hero {
 		padding-block: var(--space-8) var(--space-2);
+	}
+
+	.hero-kitchen {
+		font-size: var(--step--1);
+		font-weight: 700;
 	}
 
 	.hero h1 {

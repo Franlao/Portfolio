@@ -1,0 +1,76 @@
+---
+import type { Lang } from "../../i18n/ui";
+import { prologueCopy } from "../../lab/brigade/prologue/copy";
+import "../../lab/brigade/prologue/prologue.css";
+
+interface Props {
+	lang: Lang;
+	/** The text version, for visitors in a hurry. */
+	menuHref: string;
+}
+
+const { lang, menuHref } = Astro.props;
+const phone = prologueCopy[lang].phone;
+---
+
+<!-- Decides before the first paint whether the story plays: first visit or ?arrivee, never with ?cuisine. -->
+<script is:inline>
+	(() => {
+		let arrived = false;
+		try {
+			arrived = localStorage.getItem("brigade.arrived") === "1";
+		} catch {}
+		const query = location.search;
+		const skip = /[?&](cuisine|kitchen)\b/.test(query);
+		const replay = /[?&](arrivee|arrival)\b/.test(query);
+		if (replay || (!arrived && !skip)) {
+			document.documentElement.classList.add("brigade-arriving");
+		}
+	})();
+</script>
+
+<!-- The visitor's phone: they booked on the way, and the restaurant writes back. -->
+<section class="arrival" aria-label={phone.label}>
+	<div class="phone">
+		<p class="phone-bar" aria-hidden="true">
+			<span>{phone.time}</span>
+			<span class="phone-icons"><i></i><i></i><i></i></span>
+		</p>
+		<header class="phone-head">
+			<svg class="phone-avatar" viewBox="0 0 40 40" aria-hidden="true">
+				<circle cx="20" cy="20" r="19"></circle>
+				<path d="M12 27h16v-5c3-1 5-4 4-7-1-3-4-4-6-3-1-3-3-4-6-4s-5 1-6 4c-2-1-5 0-6 3-1 3 1 6 4 7z"></path>
+				<path d="M12 24h16"></path>
+			</svg>
+			<div>
+				<h2 class="phone-contact">{phone.contact}</h2>
+				<p class="phone-status">{phone.status}</p>
+			</div>
+		</header>
+		<ol class="phone-thread" aria-live="polite">
+			<li class="msg msg-greeting">{phone.greeting}</li>
+			<li class="msg msg-booking">
+				<p class="booking-kicker">{phone.booking.kicker}</p>
+				<p class="booking-title">{phone.booking.title}</p>
+				<dl class="booking-rows">
+					{
+						phone.booking.rows.map((row) => (
+							<div>
+								<dt>{row.term}</dt>
+								<dd>{row.value}</dd>
+							</div>
+						))
+					}
+				</dl>
+				<p class="booking-stamp" aria-hidden="true">{phone.booking.stamp}</p>
+			</li>
+			<li class="msg msg-house">{phone.house}</li>
+			<li class="msg msg-typing"><span class="visually-hidden">{phone.typing}</span><i></i><i></i><i></i></li>
+			<li class="msg msg-arrived" hidden>{phone.arrived}</li>
+		</ol>
+		<div class="phone-replies">
+			<button type="button" class="arrival-enter">{phone.enter}</button>
+			<a class="arrival-menu" href={menuHref}>{phone.menu}</a>
+		</div>
+	</div>
+</section>

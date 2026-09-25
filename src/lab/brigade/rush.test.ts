@@ -24,6 +24,12 @@ describe("coup de feu au passe", () => {
 		expect(verdict.reasons).toEqual(["Pièce manquante : devis de réparation"]);
 	});
 
+	it("explains the verdict in English too", () => {
+		const late = rushCases.find((c) => c.id === "late") ?? rushCases[0];
+		expect(judge(late.file, "en").reasons).toEqual(["Claim filed late"]);
+		expect(late.story.en).not.toBe(late.story.fr);
+	});
+
 	it("deals the configured number of rounds, without duplicates", () => {
 		const rounds = deal(() => 0.3);
 		expect(rounds).toHaveLength(ROUNDS);

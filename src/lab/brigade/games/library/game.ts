@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import type { GameContext, StationGame } from "../types";
-import { copy, typo } from "./copy";
+import { cases } from "./cases";
+import { copy, typeset } from "./copy";
 import { loopPad, pencilLoop, renderFigure } from "./figures";
 import {
 	type Claim,
@@ -18,29 +19,13 @@ import {
 import "./game.css";
 
 /**
- * « Chasse à l'hallucination » : the writer answers with citations, the visitor points at the
- * invented claim, then the verifier opens every cited page and circles the evidence in red.
+ * « Chasse à l'hallucination » (“Spot the hallucination”): the writer answers with citations, the
+ * visitor points at the invented claim, then the verifier opens every cited page and circles the
+ * evidence in red. Everything shows in the language of the page, fictional documents included.
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const STEP = 0.8;
-
-function make<K extends keyof HTMLElementTagNameMap>(
-	tag: K,
-	className = "",
-	content?: string,
-): HTMLElementTagNameMap[K] {
-	const node = document.createElement(tag);
-	if (className) node.className = className;
-	if (content !== undefined) node.textContent = typo(content);
-	return node;
-}
-
-function button(className: string, content = ""): HTMLButtonElement {
-	const node = make("button", className, content);
-	node.type = "button";
-	return node;
-}
 
 const freshSeed = () => Math.floor(Math.random() * 0x100000000);
 
@@ -53,28 +38,51 @@ interface ClaimRow {
 }
 
 function mount(root: HTMLElement, context: GameContext): () => void {
+	const lang = context.lang;
+	const t = copy[lang];
+	const set = typeset[lang];
 	const still = context.reducedMotion;
 	const motion = gsap.context(() => {});
 
+	/** An element whose text is typeset for the language of the game. */
+	function make<K extends keyof HTMLElementTagNameMap>(
+		tag: K,
+		className = "",
+		content?: string,
+	): HTMLElementTagNameMap[K] {
+		const node = document.createElement(tag);
+		if (className) node.className = className;
+		if (content !== undefined) node.textContent = set(content);
+		return node;
+	}
+
+	function button(className: string, content = ""): HTMLButtonElement {
+		const node = make("button", className, content);
+		node.type = "button";
+		return node;
+	}
+
 	// The shell: built once, its content changes with each question.
 	const shell = make("div", "g-library");
+	// Screen readers switch voice with the game, whatever the language of the surrounding page.
+	shell.lang = lang;
 
 	const bar = make("div", "g-library-bar");
 	const progress = make("p", "g-library-progress");
 	progress.setAttribute("aria-live", "polite");
 	const tally = make("ol", "g-library-tally");
-	tally.setAttribute("aria-label", typo(copy.tally));
+	tally.setAttribute("aria-label", set(t.tally));
 	bar.append(progress, tally);
 
-	const rule = make("p", "g-library-rule", copy.rule);
-	rule.append(make("span", "g-library-keys", copy.keys));
+	const rule = make("p", "g-library-rule", t.rule);
+	rule.append(make("span", "g-library-keys", t.keys));
 
 	const play = make("div", "g-library-play");
 
 	const questionBox = make("section", "g-library-question");
 	const question = make("p", "g-library-question-text");
 	question.tabIndex = -1;
-	questionBox.append(make("p", "g-library-label", copy.question), question);
+	questionBox.append(make("p", "g-library-label", t.question), question);
 
 	const sources = make("section", "g-library-sources");
 	const sourcesHead = make("div", "g-library-sources-head");
@@ -85,15 +93,15 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	// On a phone the pages scroll sideways: the list must be reachable with the keyboard.
 	const pageList = make("ul", "g-library-pages");
 	pageList.tabIndex = 0;
-	pageList.setAttribute("aria-label", typo(copy.pages));
+	pageList.setAttribute("aria-label", set(t.pages));
 	sources.append(sourcesHead, pageList);
 
 	const answerBox = make("section", "g-library-answer");
 	const claimList = make("ol", "g-library-claims");
-	const ask = make("p", "g-library-ask", copy.ask);
+	const ask = make("p", "g-library-ask", t.ask);
 	answerBox.append(
-		make("p", "g-library-label g-library-model", copy.answer),
-		make("p", "g-library-opener", copy.opener),
+		make("p", "g-library-label g-library-model", t.answer),
+		make("p", "g-library-opener", t.opener),
 		claimList,
 		ask,
 	);
@@ -110,19 +118,19 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 
 	const end = make("section", "g-library-end");
 	end.hidden = true;
-	const endTitle = make("h3", "g-library-end-title", copy.endTitle);
+	const endTitle = make("h3", "g-library-end-title", t.endTitle);
 	endTitle.tabIndex = -1;
 	const endScore = make("p", "g-library-score");
 	const recap = make("ol", "g-library-recap");
 	const verifierLine = make("p", "g-library-verifier");
 	const real = make("div", "g-library-real");
 	real.append(
-		make("p", "g-library-label", copy.realLabel),
-		make("p", "", copy.real),
-		make("p", "g-library-tags", copy.tags),
+		make("p", "g-library-label", t.realLabel),
+		make("p", "", t.real),
+		make("p", "g-library-tags", t.tags),
 	);
-	const again = button("g-library-again", copy.again);
-	const back = button("g-library-back", copy.back);
+	const again = button("g-library-again", t.again);
+	const back = button("g-library-back", t.back);
 	const actions = make("div", "g-library-actions");
 	actions.append(again, back);
 	end.append(endTitle, endScore, recap, verifierLine, real, actions);
@@ -131,7 +139,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	root.append(shell);
 
 	// Game state.
-	let rounds: Round[] = deal(freshSeed());
+	let rounds: Round[] = deal(freshSeed(), cases[lang]);
 	let index = 0;
 	let results: Result[] = [];
 	let answered = false;
@@ -158,7 +166,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 				mark.setAttribute("aria-hidden", "true");
 				item.append(
 					mark,
-					make("span", "g-library-sr", copy.tallyItem(i + 1, state)),
+					make("span", "g-library-sr", t.tallyItem(i + 1, state)),
 				);
 				return item;
 			}),
@@ -170,16 +178,16 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		const card = make("article", "g-library-page");
 		const head = make("header", "g-library-page-head");
 		head.append(
-			make("p", "g-library-page-number", `p. ${page.number}`),
+			make("p", "g-library-page-number", t.pageRef(page.number)),
 			make("p", "g-library-page-title", `${page.doc}, ${page.title}`),
 		);
 		const figure = make("div", "g-library-page-figure");
 		// Our own static drawing, built from the fictional documentation: no visitor input here.
-		figure.innerHTML = renderFigure(page);
+		figure.innerHTML = renderFigure(page, lang);
 		const text = make("p", "g-library-page-text");
 		for (const segment of page.text) {
 			if (typeof segment === "string") {
-				text.append(typo(segment));
+				text.append(set(segment));
 			} else {
 				const value = make("span", "g-library-fact", segment.value);
 				value.dataset.fact = segment.key;
@@ -195,17 +203,17 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	function renderClaim(claim: Claim, i: number): ClaimRow {
 		const item = make("li", "g-library-claim-row");
 		const pick = button("g-library-claim");
-		const hint = make("span", "g-library-claim-hint", copy.suspect);
+		const hint = make("span", "g-library-claim-hint", t.suspect);
 		pick.append(
 			make("kbd", "", String(i + 1)),
 			make("span", "g-library-claim-text", claim.text),
-			make("span", "g-library-cite", `[p. ${claim.page}]`),
+			make("span", "g-library-cite", t.cite(claim.page)),
 			hint,
 		);
 		pick.addEventListener("click", () => answer(i));
 		const check = make("p", "g-library-check");
 		check.hidden = true;
-		const stamp = make("span", "g-library-stamp", copy.stamp);
+		const stamp = make("span", "g-library-stamp", t.stamp);
 		stamp.setAttribute("aria-hidden", "true");
 		stamp.hidden = true;
 		item.append(pick, check, stamp);
@@ -217,9 +225,9 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		answered = false;
 		timeline?.kill();
 		timeline = null;
-		progress.textContent = typo(copy.progress(index + 1, rounds.length));
-		question.textContent = typo(`« ${round.item.question} »`);
-		sourcesLabel.textContent = typo(copy.sources(round.item.pages.length));
+		progress.textContent = set(t.progress(index + 1, rounds.length));
+		question.textContent = set(t.quote(round.item.question));
+		sourcesLabel.textContent = set(t.sources(round.item.pages.length));
 		ghost.hidden = true;
 		ghost.textContent = "";
 		cards = new Map();
@@ -324,7 +332,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	}
 
 	function stampPage(card: HTMLElement) {
-		const stamp = make("p", "g-library-void", copy.void);
+		const stamp = make("p", "g-library-void", t.void);
 		card.append(stamp);
 		animate(() => {
 			gsap.from(stamp, {
@@ -339,7 +347,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	/** The verifier's check of one claim: the note under it, the mark on the page. */
 	function reveal(i: number, finding: Finding, claim: Claim) {
 		const row = rows[i];
-		row.check.textContent = typo(note(finding, claim));
+		row.check.textContent = set(note(finding, claim, lang));
 		row.check.hidden = false;
 		row.item.dataset.check = finding.ok ? "ok" : "ko";
 		if ("page" in finding) {
@@ -351,7 +359,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 			}
 			bringIntoView(card);
 		} else {
-			ghost.textContent = typo(copy.ghost(finding.cited));
+			ghost.textContent = set(t.ghost(finding.cited));
 			ghost.hidden = false;
 		}
 		if (finding.ok) context.sound.pop();
@@ -377,22 +385,20 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		if ("page" in fakeFinding)
 			bringIntoView(cards.get(fakeFinding.page.number));
 		verdict.dataset.right = String(right);
-		verdictHead.textContent = typo(
-			right
-				? copy.right(round.fake + 1)
-				: copy.wrong(picked + 1, round.fake + 1),
+		verdictHead.textContent = set(
+			right ? t.right(round.fake + 1) : t.wrong(picked + 1, round.fake + 1),
 		);
-		verdictTrap.textContent = typo(copy.trap(trap(fakeFinding)));
-		next.textContent = typo(index + 1 >= rounds.length ? copy.last : copy.next);
+		verdictTrap.textContent = set(t.trap(trap(fakeFinding, lang)));
+		next.textContent = set(index + 1 >= rounds.length ? t.last : t.next);
 		next.hidden = false;
 		renderTally();
 		next.focus();
 		if (right) {
 			context.sound.good();
-			context.say(copy.say.right);
+			context.say(t.say.right);
 		} else {
 			context.sound.bad();
-			context.say(copy.say.wrong);
+			context.say(t.say.wrong);
 		}
 	}
 
@@ -405,9 +411,9 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		// aria-disabled rather than disabled: the focus stays on the chosen claim.
 		for (const row of rows) row.button.setAttribute("aria-disabled", "true");
 		rows[picked].item.dataset.picked = "true";
-		rows[picked].hint.textContent = typo(copy.picked);
+		rows[picked].hint.textContent = set(t.picked);
 		ask.hidden = true;
-		verdictHead.textContent = typo(copy.checking);
+		verdictHead.textContent = set(t.checking);
 		const steps = findings.map(
 			(finding, i) => () => reveal(i, finding, round.claims[i]),
 		);
@@ -433,28 +439,28 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		rule.hidden = true;
 		end.hidden = false;
 		progress.textContent = "";
-		endScore.textContent = typo(copy.score(result.right, result.total));
+		endScore.textContent = set(t.score(result.right, result.total));
 		recap.replaceChildren(
 			...results.map((entry, i) => {
 				const right = isRight(entry);
 				const item = make("li");
 				const mark = make("span", "g-library-recap-mark", right ? "✓" : "✗");
-				const kind = trap(inspect(entry.round)[entry.round.fake]);
-				item.append(mark, typo(copy.recap(i + 1, right, kind)));
+				const kind = trap(inspect(entry.round)[entry.round.fake], lang);
+				item.append(mark, set(t.recap(i + 1, right, kind)));
 				return item;
 			}),
 		);
-		verifierLine.textContent = typo(copy.verifier(result.total));
+		verifierLine.textContent = set(t.verifier(result.total));
 		renderTally();
 		bar.scrollIntoView({ block: "nearest" });
 		endTitle.focus({ preventScroll: true });
 		context.sound.bell();
-		context.say(copy.say.end);
+		context.say(t.say.end);
 	}
 
 	function restart() {
 		const previous = rounds.map((round) => round.item.id);
-		rounds = deal(freshSeed(), previous);
+		rounds = deal(freshSeed(), cases[lang], previous);
 		index = 0;
 		results = [];
 		end.hidden = true;
@@ -498,7 +504,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	window.addEventListener("keydown", onKey);
 
 	showRound();
-	context.say(copy.say.start);
+	context.say(t.say.start);
 
 	return () => {
 		window.removeEventListener("keydown", onKey);
@@ -508,7 +514,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 }
 
 export const game: StationGame = {
-	title: copy.title,
-	intro: copy.intro,
+	title: { fr: typeset.fr(copy.fr.title), en: typeset.en(copy.en.title) },
+	intro: { fr: typeset.fr(copy.fr.intro), en: typeset.en(copy.en.intro) },
 	mount,
 };

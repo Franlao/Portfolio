@@ -1,6 +1,6 @@
 import gsap from "gsap";
 import type { GameContext, StationGame } from "../types";
-import { copy, formatCard } from "./copy";
+import { type Copy, copies } from "./copy";
 import {
 	type Answer,
 	type Batch,
@@ -27,8 +27,9 @@ import {
 import "./game.css";
 
 /**
- * « Vrai ou synthétique ? » : five pairs of batches, one real and one synthetic,
+ * « Vrai ou synthétique ? » (“Real or synthetic?”): five pairs of batches, one real and one synthetic,
  * then a bench where the visitor tunes the generator between fidelity and privacy.
+ * Every string comes from the copy of the page's language, handed down to the helpers.
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -182,6 +183,7 @@ function trendLine(points: [number, number][]): SVGLineElement {
 }
 
 function cardsTable(
+	copy: Copy,
 	patients: CardPatient[],
 	side: Side,
 ): { table: HTMLTableElement; cells: HTMLTableCellElement[][] } {
@@ -203,7 +205,7 @@ function cardsTable(
 	const cells = patients.map((patient) => {
 		const row = make("tr");
 		const tds = FIELDS.map((field) =>
-			make("td", undefined, formatCard(field, patient[field])),
+			make("td", undefined, copy.chart.cardValue(field, patient[field])),
 		);
 		row.append(...tds);
 		body.append(row);
@@ -229,7 +231,12 @@ const otherSide = (side: Side): Side => (side === "a" ? "b" : "a");
 const peak = (batch: Batch) =>
 	batch.view === "histogram" ? Math.max(...batch.counts) : 0;
 
-function renderBatch(round: Round, side: Side, top: number): BatchView {
+function renderBatch(
+	copy: Copy,
+	round: Round,
+	side: Side,
+	top: number,
+): BatchView {
 	const batch = batchOf(round, side);
 	const article = make("article", "g-pastry-batch");
 	const heading = make("h3");
@@ -257,7 +264,7 @@ function renderBatch(round: Round, side: Side, top: number): BatchView {
 			axisRow([copy.chart.scatterAxis.y, copy.chart.scatterAxis.x]),
 		);
 	} else {
-		const table = cardsTable(batch.patients, side);
+		const table = cardsTable(copy, batch.patients, side);
 		cells = table.cells;
 		article.append(table.table, axisRow([copy.chart.cards.note], false));
 	}
@@ -304,6 +311,7 @@ function gauge(label: string, threshold: number): GaugeView {
 }
 
 function setGauge(
+	copy: Copy,
 	view: GaugeView,
 	ratio: number,
 	pass: boolean,
@@ -338,9 +346,11 @@ const percent = (ratio: number) => Math.round(ratio * 100);
 
 function mountPastry(root: HTMLElement, context: GameContext): () => void {
 	const { sound, say, reducedMotion } = context;
+	const copy = copies[context.lang];
 	const tweens: gsap.core.Tween[] = [];
 
 	const shell = make("div", "g-pastry");
+	shell.lang = context.lang;
 	shell.classList.toggle("is-still", reducedMotion);
 	root.append(shell);
 
@@ -561,8 +571,8 @@ function mountPastry(root: HTMLElement, context: GameContext): () => void {
 		progress.textContent = copy.progress(index, rounds.length);
 		const top = Math.max(peak(round.real), peak(round.fake));
 		views = {
-			a: renderBatch(round, "a", top),
-			b: renderBatch(round, "b", top),
+			a: renderBatch(copy, round, "a", top),
+			b: renderBatch(copy, round, "b", top),
 		};
 		pair.replaceChildren(views.a.article, views.b.article);
 		for (const side of SIDES) {
@@ -737,6 +747,7 @@ function mountPastry(root: HTMLElement, context: GameContext): () => void {
 			copy.bench.valueText(fidelity, resemblance, risk),
 		);
 		setGauge(
+			copy,
 			resemblanceGauge,
 			result.resemblance,
 			result.resemblance >= RESEMBLANCE_MIN,
@@ -744,6 +755,7 @@ function mountPastry(root: HTMLElement, context: GameContext): () => void {
 			copy.bench.resemblance.detail(percent(RESEMBLANCE_MIN)),
 		);
 		setGauge(
+			copy,
 			riskGauge,
 			result.risk,
 			result.risk <= RISK_MAX,
@@ -859,7 +871,7 @@ function mountPastry(root: HTMLElement, context: GameContext): () => void {
 }
 
 export const game: StationGame = {
-	title: copy.title,
-	intro: copy.intro,
+	title: { fr: copies.fr.title, en: copies.en.title },
+	intro: { fr: copies.fr.intro, en: copies.en.intro },
 	mount: mountPastry,
 };

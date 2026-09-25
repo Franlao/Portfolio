@@ -1,8 +1,8 @@
 # Cahier des charges des mini-jeux de La Brigade
 
-Le prototype `/lab/brigade/` présente les projets de Solim Laokpezi (AI Engineer) comme les postes d'une cuisine-diorama en 3D. Chaque poste est un projet ; son mini-jeu fait **comprendre le principe du projet en jouant**, en moins d'une minute et demie. Les projets réels sont confidentiels : **toutes les données sont fictives**, et on ne montre que le principe.
+La page d'accueil « La Brigade » (`/`, `/en/`) présente les projets de Solim Laokpezi (AI Engineer) comme les postes d'une cuisine-diorama en 3D. Chaque poste est un projet ; son mini-jeu fait **comprendre le principe du projet en jouant**, en moins d'une minute et demie. Les projets réels sont confidentiels : **toutes les données sont fictives**, et on ne montre que le principe.
 
-Le jeu du passe (`src/lab/brigade/rush.ts` + la section `.rush` de `src/pages/lab/brigade.astro` + les styles `.rush-*` de `src/lab/brigade/brigade.css`) est la **référence de ton et de style** : lis-le avant de commencer, inspire-t'en pour la cohérence, sans le copier.
+Le jeu du passe (`src/lab/brigade/rush.ts` + la section `.rush` de `src/components/pages/Brigade.astro` + les styles `.rush-*` de `src/lab/brigade/brigade.css`) est la **référence de ton et de style** : lis-le avant de commencer, inspire-t'en pour la cohérence, sans le copier.
 
 ## Périmètre
 
@@ -14,7 +14,7 @@ Le jeu du passe (`src/lab/brigade/rush.ts` + la section `.rush` de `src/pages/la
 
 `game.ts` exporte `export const game: StationGame` (voir `games/types.ts`). `mount(root, context)` dessine le jeu dans `root`, et renvoie une fonction de nettoyage qui arrête les minuteries et les animations GSAP, et retire les écouteurs globaux (par exemple un `keydown` sur `window`). Le panneau fournit déjà le titre, l'intro et le bouton « Quitter ». Ne les duplique pas.
 
-`context` fournit : `sound` (`pop`, `good`, `bad`, `stamp`, `bell`, sans effet si le son est coupé), `say(texte)` (une bulle au-dessus du chef, moins de 30 caractères), `close()` (retour à la cuisine) et `reducedMotion`.
+`context` fournit : `lang` (`"fr"` ou `"en"`), `sound` (`pop`, `good`, `bad`, `stamp`, `bell`, sans effet si le son est coupé), `say(texte)` (une bulle au-dessus du chef, moins de 30 caractères), `close()` (retour à la cuisine) et `reducedMotion`.
 
 ## Technique
 
@@ -40,8 +40,10 @@ Le jeu du passe (`src/lab/brigade/rush.ts` + la section `.rush` de `src/pages/la
 
 ## Texte
 
-- Français uniquement, phrases courtes, on vouvoie le visiteur. Pas de majuscules pour les étiquettes, pas de texte creux.
-- Toute chaîne affichée contenant `:` `;` `?` `!` `%`, des guillemets, des milliers ou une unité passe par `frTypo` (`src/lib/typo.ts`). Guillemets français « ».
+- Bilingue : `context.lang` vaut `"fr"` ou `"en"`, et le jeu affiche tout dans cette langue, y compris les données fictives (dossiers, comptes rendus, documents). Les textes vivent dans un objet `{ fr: {...}, en: {...} }` de même forme, dont un test vérifie la parité des clés. `title` et `intro` sont des `Record<Lang, string>` déjà typographiés.
+- Phrases courtes. En français on vouvoie le visiteur ; en anglais, un ton direct et chaleureux (« you »). Pas de majuscules pour les étiquettes, pas de texte creux.
+- En français, toute chaîne affichée contenant `:` `;` `?` `!` `%`, des guillemets, des milliers ou une unité passe par `frTypo` (`src/lib/typo.ts`), avec des guillemets « ». En anglais, pas de `frTypo`, des guillemets “ ”, et les nombres et montants sont formatés avec `Intl` en `en-GB`.
+- L'anglais n'est pas du mot à mot : c'est une réécriture idiomatique (anglais britannique), qui garde le même sens, les mêmes faits et la même longueur à peu près. Les jeux de mots français sont remplacés par des équivalents anglais.
 
 ## Accessibilité
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { copy, fr } from "./copy";
+import type { Lang } from "../types";
+import { cardText } from "./cards";
+import { copy, fr, textFor } from "./copy";
 import {
 	audit,
 	benchStatus,
@@ -27,6 +29,35 @@ import {
 
 const ids = (cards: readonly Card[]) => cards.map((card) => card.id);
 
+const LANGS: readonly Lang[] = ["fr", "en"];
+
+/**
+ * The shape of a text object: its keys all the way down, arrays with their length,
+ * functions with their number of parameters. Both languages must share it.
+ */
+function shape(value: unknown): unknown {
+	if (typeof value === "function") return `function/${value.length}`;
+	if (Array.isArray(value)) return value.map(shape);
+	if (value && typeof value === "object") {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, entry]) => [key, shape(entry)]),
+		);
+	}
+	return typeof value;
+}
+
+/** Every string of a text object, functions called with sample arguments. */
+function strings(value: unknown): string[] {
+	if (typeof value === "string") return [value];
+	if (typeof value === "function") {
+		return strings(value(...Array.from({ length: value.length }, () => 2)));
+	}
+	if (value && typeof value === "object") {
+		return Object.values(value).flatMap(strings);
+	}
+	return [];
+}
+
 describe("the card pool", () => {
 	it("has unique ids", () => {
 		expect(new Set(ids(pool)).size).toBe(pool.length);
@@ -47,12 +78,19 @@ describe("the card pool", () => {
 	});
 
 	it("explains every card, and gives every trap a short shout", () => {
-		for (const card of pool) {
-			expect(card.reason.length, card.id).toBeGreaterThan(10);
-			expect(card.short.length, card.id).toBeLessThanOrEqual(20);
-			if (!card.needed) {
-				expect(card.shout, card.id).toBeDefined();
-				expect(fr(card.shout ?? "").length, card.id).toBeLessThan(30);
+		for (const lang of LANGS) {
+			const { cards } = textFor(lang);
+			for (const card of pool) {
+				const text = cards[card.id];
+				const where = `${lang}:${card.id}`;
+				expect(text.reason.length, where).toBeGreaterThan(10);
+				expect(text.short.length, where).toBeLessThanOrEqual(20);
+				if (card.needed) {
+					expect(text.shout, where).toBeUndefined();
+				} else {
+					expect(text.shout, where).toBeDefined();
+					expect(text.shout?.length, where).toBeLessThan(30);
+				}
 			}
 		}
 	});
@@ -275,19 +313,48 @@ describe("the bench", () => {
 });
 
 describe("the copy", () => {
+	it("has the same keys in French and English, all the way down", () => {
+		expect(shape(copy.en)).toEqual(shape(copy.fr));
+		expect(shape(cardText.en)).toEqual(shape(cardText.fr));
+	});
+
+	it("keeps each language's punctuation and quotes", () => {
+		const english = [...strings(copy.en), ...strings(cardText.en)];
+		for (const text of english) {
+			// No guillemets, no French spacing, no French typography.
+			expect(text, text).not.toMatch(/[«»  ]| [:;!?]/);
+		}
+		const french = [...strings(copy.fr), ...strings(cardText.fr)];
+		for (const text of french) expect(text, text).not.toMatch(/[“”]/);
+	});
+
 	it("keeps every chef bubble under 30 characters", () => {
-		const bubbles = [
-			copy.say.start,
-			copy.say.served,
-			copy.say.refused,
-			copy.say.bench,
-			copy.say.allFound,
-			copy.say.perfect,
-			copy.say.end,
-			...LETTERS.map(copy.say.lead),
-		];
-		for (const bubble of bubbles)
-			expect(fr(bubble).length, bubble).toBeLessThan(30);
+		for (const lang of LANGS) {
+			const { say } = textFor(lang).copy;
+			const bubbles = [
+				say.start,
+				say.served,
+				say.refused,
+				say.bench,
+				say.allFound,
+				say.perfect,
+				say.end,
+				...LETTERS.map(say.lead),
+			];
+			for (const bubble of bubbles)
+				expect(bubble.length, `${lang}: ${bubble}`).toBeLessThan(30);
+		}
+	});
+
+	it("typesets French only, down to the cards and the functions", () => {
+		const french = textFor("fr");
+		expect(french.copy.say.start).toBe(fr(copy.fr.say.start));
+		expect(french.copy.say.start).not.toBe(copy.fr.say.start);
+		expect(french.copy.pick.added("x")).toBe(fr("Posé : x."));
+		expect(french.cards.friday.label).toBe(fr(cardText.fr.friday.label));
+		const english = textFor("en");
+		expect(english.copy).toBe(copy.en);
+		expect(english.cards).toBe(cardText.en);
 	});
 
 	it("applies French typography, hours included", () => {
@@ -299,11 +366,15 @@ describe("the copy", () => {
 	});
 
 	it("agrees in number", () => {
-		expect(copy.end.tray(1, 6)).toBe("Plateau : 1 geste juste sur 6.");
-		expect(copy.end.tray(5, 6)).toBe("Plateau : 5 gestes justes sur 6.");
-		expect(copy.end.bench(3, 3)).toBe(
+		expect(copy.fr.end.tray(1, 6)).toBe("Plateau : 1 geste juste sur 6.");
+		expect(copy.fr.end.tray(5, 6)).toBe("Plateau : 5 gestes justes sur 6.");
+		expect(copy.fr.end.bench(3, 3)).toBe(
 			"Banc d'essai : 3 assistants sur 3 passés en tête.",
 		);
-		expect(copy.pick.remaining(1)).toBe("Encore 1 carte.");
+		expect(copy.fr.pick.remaining(1)).toBe("Encore 1 carte.");
+		expect(copy.en.pick.remaining(1)).toBe("1 more card to go.");
+		expect(copy.en.pick.remaining(3)).toBe("3 more cards to go.");
+		expect(copy.en.pick.refused(1)).toBe("Sent back: 1 trap on the tray.");
+		expect(copy.en.pick.refused(2)).toBe("Sent back: 2 traps on the tray.");
 	});
 });

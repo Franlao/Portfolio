@@ -8,6 +8,7 @@ import {
 	type Piece,
 	type ShelfId,
 	shelves,
+	texts,
 } from "./data";
 import {
 	type Check,
@@ -22,7 +23,6 @@ import {
 	SUMMARY_NODES,
 	score,
 	seeded,
-	shelfById,
 } from "./logic";
 import "./game.css";
 
@@ -57,21 +57,24 @@ interface MeterRow {
 
 let instances = 0;
 
-function el<K extends keyof HTMLElementTagNameMap>(
-	tag: K,
-	className = "",
-	text?: string,
-): HTMLElementTagNameMap[K] {
-	const node = document.createElement(tag);
-	if (className) node.className = className;
-	if (text !== undefined) node.textContent = frTypo(text);
-	return node;
-}
-
 const pick = <T>(items: T[], index: number): T => items[index % items.length];
 
 function mount(root: HTMLElement, context: GameContext): () => void {
-	const { sound, say, close } = context;
+	const { sound, say, close, lang } = context;
+	const t = copy[lang];
+	const words = texts[lang];
+	// French typography only suits French: the English text is already final.
+	const typo = lang === "fr" ? frTypo : (text: string) => text;
+	const el = <K extends keyof HTMLElementTagNameMap>(
+		tag: K,
+		className = "",
+		text?: string,
+	): HTMLElementTagNameMap[K] => {
+		const node = document.createElement(tag);
+		if (className) node.className = className;
+		if (text !== undefined) node.textContent = typo(text);
+		return node;
+	};
 	const motion = !context.reducedMotion;
 	const prefix = `gd-${++instances}`;
 
@@ -93,11 +96,11 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	// The house rules, on a yellow note.
 	const note = el("div", "gd-note");
 	const rules = el("ul");
-	rules.append(...copy.rules.map((rule) => el("li", "", rule)));
+	rules.append(...t.rules.map((rule) => el("li", "", rule)));
 	note.append(
-		el("h3", "", copy.rulesTitle),
+		el("h3", "", t.rulesTitle),
 		rules,
-		el("p", "gd-legend", copy.legend),
+		el("p", "gd-legend", t.legend),
 	);
 
 	// The dock: the crate being delivered, then the verdict.
@@ -114,7 +117,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	crateCard.setAttribute("aria-labelledby", `${progress.id} ${crateLabel.id}`);
 	crateCard.setAttribute("aria-describedby", crateExcerpt.id);
 	crateCard.append(
-		el("p", "gd-crate-tag", copy.crateTag),
+		el("p", "gd-crate-tag", t.crateTag),
 		crateLabel,
 		crateExcerpt,
 	);
@@ -122,8 +125,8 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	const status = el("div", "gd-status");
 	status.setAttribute("aria-live", "polite");
 	const ask = el("p", "gd-ask");
-	ask.append(el("span", "", copy.ask), " ", el("span", "gd-keys", copy.keys));
-	const writing = el("p", "gd-writing", copy.writing);
+	ask.append(el("span", "", t.ask), " ", el("span", "gd-keys", t.keys));
+	const writing = el("p", "gd-writing", t.writing);
 	const verdict = el("div", "gd-verdict");
 	const verdictHead = el("p", "gd-verdict-head");
 	const verdictWhy = el("p", "gd-verdict-why");
@@ -136,11 +139,11 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 
 	// The reserve: the file summary on top, then one shelf per theme.
 	const reserveFrame = el("section", "gd-reserve");
-	reserveFrame.setAttribute("aria-label", frTypo(copy.reserveLabel));
+	reserveFrame.setAttribute("aria-label", typo(t.reserveLabel));
 	const signFrame = el("div", "gd-sign");
 	const signBadge = el("span", "gd-state");
 	const signTag = el("p", "gd-node-tag");
-	signTag.append(el("span", "", copy.fileTag(FILE_NUMBER)), signBadge);
+	signTag.append(el("span", "", t.fileTag(FILE_NUMBER)), signBadge);
 	const signText = el("p", "gd-summary gd-sign-text");
 	signFrame.append(signTag, signText);
 	const sign: NodeView = {
@@ -151,24 +154,25 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 
 	const rack = el("ol", "gd-rack");
 	const views = new Map<ShelfId, ShelfView>();
-	shelves.forEach((shelf, i) => {
+	shelves.forEach((id, i) => {
+		const shelf = words.shelves[id];
 		const frame = el("li", "gd-shelf");
 		const button = el("button", "gd-shelf-btn");
 		button.type = "button";
 		const key = el("kbd", "", String(i + 1));
 		key.setAttribute("aria-hidden", "true");
 		const name = el("span", "gd-shelf-name");
-		name.append(el("span", "gd-sr", `${copy.shelfAction} `), shelf.name);
+		name.append(el("span", "gd-sr", `${t.shelfAction} `), typo(shelf.name));
 		button.append(key, name, el("span", "gd-shelf-hint", shelf.hint));
-		button.addEventListener("click", () => choose(shelf.id));
+		button.addEventListener("click", () => choose(id));
 		const badge = el("span", "gd-state");
 		const tag = el("p", "gd-node-tag");
-		tag.append(el("span", "", copy.summaryTag), badge);
+		tag.append(el("span", "", t.summaryTag), badge);
 		const summary = el("p", "gd-summary");
 		const boxes = el("ul", "gd-boxes");
 		frame.append(button, tag, summary, boxes);
 		rack.append(frame);
-		views.set(shelf.id, { frame, badge, summary, button, boxes });
+		views.set(id, { frame, badge, summary, button, boxes });
 	});
 	// The blue line that climbs from the shelf to the top while the model rewrites.
 	const lift = el("span", "gd-lift");
@@ -177,7 +181,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 
 	// The counter: what a full reindex would have cost, against the incremental update.
 	const meter = el("section", "gd-meter");
-	const meterTitle = el("h3", "gd-meter-title", copy.meterTitle);
+	const meterTitle = el("h3", "gd-meter-title", t.meterTitle);
 	meterTitle.id = `${prefix}-meter`;
 	meter.setAttribute("aria-labelledby", meterTitle.id);
 	meter.append(meterTitle);
@@ -195,38 +199,38 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		meter.append(row);
 		return { cells, count, label, value: 0, group: null };
 	};
-	const fullRow = meterRow("full", copy.full, copy.fullCount);
+	const fullRow = meterRow("full", t.full, t.fullCount);
 	const incrementalRow = meterRow(
 		"incremental",
-		copy.incremental,
-		copy.incrementalCount,
+		t.incremental,
+		t.incrementalCount,
 	);
 
 	// The end: the control questions, then the score.
 	const end = el("section", "gd-end");
 	end.hidden = true;
-	const endTitle = el("h3", "gd-end-title", copy.controlTitle);
+	const endTitle = el("h3", "gd-end-title", t.controlTitle);
 	endTitle.tabIndex = -1;
 	const checksList = el("ol", "gd-checks");
 	const scoreMain = el("p", "gd-score-main");
 	const scoreSavings = el("p", "gd-score-savings");
-	const again = el("button", "gd-again", copy.again);
+	const again = el("button", "gd-again", t.again);
 	again.type = "button";
-	const back = el("button", "gd-back", copy.back);
+	const back = el("button", "gd-back", t.back);
 	back.type = "button";
 	const actions = el("div", "gd-end-actions");
 	actions.append(again, back);
 	const scoreBox = el("div", "gd-score");
 	scoreBox.append(
-		el("h3", "gd-score-title", copy.endTitle),
+		el("h3", "gd-score-title", t.endTitle),
 		scoreMain,
 		scoreSavings,
-		el("p", "gd-score-project", copy.project),
+		el("p", "gd-score-project", t.project),
 		actions,
 	);
 	end.append(
 		endTitle,
-		el("p", "gd-end-lead", copy.controlLead),
+		el("p", "gd-end-lead", t.controlLead),
 		checksList,
 		scoreBox,
 	);
@@ -241,7 +245,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	// Game state.
 	let deck: Crate[] = [];
 	let index = 0;
-	let reserve: Reserve = initialReserve();
+	let reserve: Reserve = initialReserve(lang);
 	let filings: Filing[] = [];
 	let phase: Phase = "choose";
 	let liftTarget: HTMLElement | null = null;
@@ -268,7 +272,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		if (state) view.frame.dataset.state = state;
 		else delete view.frame.dataset.state;
 		view.badge.textContent = state
-			? frTypo(state === "rewritten" ? copy.rewritten : copy.untouched)
+			? typo(state === "rewritten" ? t.rewritten : t.untouched)
 			: "";
 	}
 
@@ -281,7 +285,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 
 	function setSummary(view: NodeView, text: string) {
 		view.summary.classList.remove("is-typing");
-		view.summary.textContent = frTypo(text);
+		view.summary.textContent = typo(text);
 	}
 
 	/**
@@ -289,7 +293,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	 * but invisible, so the shelf takes its new height at once instead of growing line by line.
 	 */
 	function typeInto(view: NodeView, text: string): gsap.core.Tween {
-		const final = frTypo(text);
+		const final = typo(text);
 		const typed = el("span", "gd-typed");
 		const ghost = el("span", "gd-ghost");
 		const state = { n: 0 };
@@ -329,11 +333,11 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		const box = el("li", "gd-box");
 		if (misfiled) {
 			box.classList.add("is-misfiled");
-			const cross = el("span", "gd-box-mark", copy.no);
+			const cross = el("span", "gd-box-mark", t.no);
 			cross.setAttribute("aria-hidden", "true");
-			box.append(cross, el("span", "gd-sr", `${copy.misfiled} : `));
+			box.append(cross, el("span", "gd-sr", `${t.misfiled} `));
 		}
-		box.append(frTypo(piece.label));
+		box.append(typo(words.pieces[piece.id].label));
 		view.boxes.append(box);
 		return box;
 	}
@@ -348,7 +352,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		const cells = Array.from({ length: n }, () => el("span", "gd-cell"));
 		row.group?.append(...cells);
 		row.value += n;
-		row.count.textContent = frTypo(row.label(row.value));
+		row.count.textContent = typo(row.label(row.value));
 		if (motion) {
 			track(
 				gsap.from(cells, {
@@ -365,15 +369,16 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		row.cells.replaceChildren();
 		row.group = null;
 		row.value = 0;
-		row.count.textContent = frTypo(row.label(0));
+		row.count.textContent = typo(row.label(0));
 	}
 
 	function showCrate() {
 		clearMarks();
 		const crate = deck[index];
-		progress.textContent = frTypo(copy.progress(index + 1, deck.length));
-		crateLabel.textContent = frTypo(crate.label);
-		crateExcerpt.textContent = frTypo(`« ${crate.excerpt} »`);
+		progress.textContent = typo(t.progress(index + 1, deck.length));
+		const piece = words.pieces[crate.id];
+		crateLabel.textContent = typo(piece.label);
+		crateExcerpt.textContent = typo(t.quote(piece.excerpt));
 		ask.hidden = false;
 		writing.hidden = true;
 		verdict.hidden = true;
@@ -462,59 +467,54 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 
 	function afterFiling(filing: Filing) {
 		setPhase("filed");
-		const home = shelfById(filing.crate.shelf);
-		const chosen = shelfById(filing.shelf);
+		const home = words.shelves[filing.crate.shelf];
+		const chosen = words.shelves[filing.shelf];
+		const { why } = words.pieces[filing.crate.id];
 		verdict.dataset.right = String(filing.right);
 		verdictHead.replaceChildren(
-			el("span", "gd-mark", filing.right ? copy.yes : copy.no),
-			` ${frTypo(filing.right ? copy.right : copy.wrong)}`,
+			el("span", "gd-mark", filing.right ? t.yes : t.no),
+			` ${typo(filing.right ? t.right : t.wrong)}`,
 		);
-		verdictWhy.textContent = frTypo(
-			filing.right
-				? filing.crate.why
-				: `${filing.crate.why} ${copy.belongs(home.name, chosen.name)}`,
+		verdictWhy.textContent = typo(
+			filing.right ? why : `${why} ${t.belongs(home.name, chosen.name)}`,
 		);
-		verdictCost.textContent = frTypo(
-			copy.cost(
-				filing.rewritten.length,
-				SUMMARY_NODES - filing.rewritten.length,
-			),
+		verdictCost.textContent = typo(
+			t.cost(filing.rewritten.length, SUMMARY_NODES - filing.rewritten.length),
 		);
 		writing.hidden = true;
 		verdict.hidden = false;
-		next.textContent = frTypo(
-			index + 1 >= deck.length ? copy.toControl : copy.next,
-		);
+		next.textContent = typo(index + 1 >= deck.length ? t.toControl : t.next);
 		next.hidden = false;
 		next.focus({ preventScroll: true });
 		if (filing.right) {
 			sound.good();
-			say(pick(copy.chef.right, index));
+			say(pick(t.chef.right, index));
 		} else {
 			sound.bad();
-			say(pick(copy.chef.wrong, index));
+			say(pick(t.chef.wrong, index));
 		}
 	}
 
 	function renderCheck(check: Check, i: number, all: Check[]) {
 		const item = el("li", "gd-check");
 		item.dataset.found = String(check.found);
-		const target = shelfById(check.target);
+		const target = words.shelves[check.target];
+		const piece = words.pieces[check.crate.id];
 		const path = [
-			copy.pathFile,
+			t.pathFile,
 			target.name,
-			check.found ? check.crate.label : copy.pathNothing,
+			check.found ? piece.label : t.pathNothing,
 		].join(" → ");
 		const stamp = el("p", "gd-check-stamp");
 		stamp.append(
-			el("span", "gd-mark", check.found ? copy.yes : copy.no),
-			` ${frTypo(check.found ? copy.found : copy.missing)}`,
+			el("span", "gd-mark", check.found ? t.yes : t.no),
+			` ${typo(check.found ? t.found : t.missing)}`,
 		);
 		item.append(
-			el("p", "gd-check-kicker", copy.questionNumber(i + 1, all.length)),
-			el("p", "gd-check-question", check.crate.question),
+			el("p", "gd-check-kicker", t.questionNumber(i + 1, all.length)),
+			el("p", "gd-check-question", piece.question),
 			el("p", "gd-check-path", path),
-			el("p", "gd-check-reply", `« ${check.reply} »`),
+			el("p", "gd-check-reply", t.quote(check.reply)),
 			stamp,
 		);
 		if (!check.found) {
@@ -522,10 +522,10 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 				el(
 					"p",
 					"gd-check-why",
-					copy.whyMissing(
-						check.crate.label,
+					t.whyMissing(
+						piece.label,
 						target.name,
-						shelfById(check.placedIn).name,
+						words.shelves[check.placedIn].name,
 					),
 				),
 			);
@@ -539,15 +539,15 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		const checks = control(reserve, filings);
 		const result = score(filings, checks);
 		checksList.replaceChildren(...checks.map(renderCheck));
-		const summary = `${copy.scoreFiled(result.filed, result.total)} ${copy.scoreFound(result.found, result.asked)}`;
-		scoreMain.textContent = frTypo(summary);
-		scoreSavings.textContent = frTypo(
-			copy.scoreSavings(result.incremental, result.full),
+		const summary = `${t.scoreFiled(result.filed, result.total)} ${t.scoreFound(result.found, result.asked)}`;
+		scoreMain.textContent = typo(summary);
+		scoreSavings.textContent = typo(
+			t.scoreSavings(result.incremental, result.full),
 		);
 		end.hidden = false;
-		live.textContent = frTypo(summary);
+		live.textContent = typo(summary);
 		endTitle.focus();
-		say(result.found === result.asked ? copy.chef.perfect : copy.chef.holes);
+		say(result.found === result.asked ? t.chef.perfect : t.chef.holes);
 
 		const rows = [...checksList.children] as HTMLElement[];
 		if (!motion) {
@@ -575,14 +575,14 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		deck = deal(seeded(Math.floor(Math.random() * 2 ** 32)));
 		index = 0;
 		filings = [];
-		reserve = initialReserve();
-		for (const shelf of shelves) {
-			const view = views.get(shelf.id) as ShelfView;
+		reserve = initialReserve(lang);
+		for (const id of shelves) {
+			const view = views.get(id) as ShelfView;
 			view.boxes.replaceChildren();
-			for (const piece of onShelf(reserve.placements, shelf.id)) {
+			for (const piece of onShelf(reserve.placements, id)) {
 				addBox(view, piece, false);
 			}
-			setSummary(view, reserve.summaries[shelf.id]);
+			setSummary(view, reserve.summaries[id]);
 		}
 		setSummary(sign, reserve.summaries.file);
 		resetMeter(fullRow);
@@ -601,7 +601,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 		const shelf = shelves[Number(event.key) - 1];
 		if (!shelf) return;
 		event.preventDefault();
-		choose(shelf.id);
+		choose(shelf);
 	}
 
 	next.addEventListener("click", () => {
@@ -612,13 +612,13 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 	});
 	again.addEventListener("click", () => {
 		restart();
-		say(copy.chef.start);
+		say(t.chef.start);
 	});
 	back.addEventListener("click", () => close());
 	window.addEventListener("keydown", onKey);
 
 	restart();
-	say(copy.chef.start);
+	say(t.chef.start);
 
 	return () => {
 		stopAll();
@@ -628,7 +628,7 @@ function mount(root: HTMLElement, context: GameContext): () => void {
 }
 
 export const game: StationGame = {
-	title: copy.title,
-	intro: copy.intro,
+	title: { fr: frTypo(copy.fr.title), en: copy.en.title },
+	intro: { fr: frTypo(copy.fr.intro), en: copy.en.intro },
 	mount,
 };

@@ -8,6 +8,8 @@
  *
  * Everything here is pure and deterministic: randomness comes from a seeded generator,
  * so a hand can be replayed and tested. The cards are generic good practice, not a real system.
+ * No word is displayed from here: the text lives in copy.ts and cards.ts, in French and English,
+ * so both languages play exactly the same game.
  */
 
 export type Family = "production" | "security" | "docs";
@@ -15,18 +17,38 @@ export type Family = "production" | "security" | "docs";
 /** The three families mirror the real job: put in production, secure, document. */
 export const FAMILIES: readonly Family[] = ["production", "security", "docs"];
 
+export type CardId =
+	| "tests"
+	| "rollback"
+	| "rate-limit"
+	| "call-logs"
+	| "alerts"
+	| "fallback"
+	| "shared-library"
+	| "skip-tests"
+	| "friday"
+	| "auto-upgrade"
+	| "vault"
+	| "security-review"
+	| "access"
+	| "input-filter"
+	| "key-in-code"
+	| "clear-logs"
+	| "admin"
+	| "runbook"
+	| "api-doc"
+	| "known-limits"
+	| "code-is-doc"
+	| "doc-later";
+
+/**
+ * A card only carries what the rules need. Its words (label, reason, the chef's shout)
+ * live in cards.ts, once per language, under the same id.
+ */
 export interface Card {
-	id: string;
+	id: CardId;
 	family: Family;
-	/** The action written on the card, in the infinitive. */
-	label: string;
-	/** Short name for the tray slots and the feedback. */
-	short: string;
 	needed: boolean;
-	/** Why the chef wants it (needed card) or refuses it (trap). */
-	reason: string;
-	/** What the chef shouts when this trap reaches the pass, under 30 characters. */
-	shout?: string;
 }
 
 export const TRAY_SIZE = 6;
@@ -34,200 +56,28 @@ export const NEEDED_PER_FAMILY = 2;
 export const TRAP_COUNT = 4;
 
 export const pool: readonly Card[] = [
-	// Production: needed.
-	{
-		id: "tests",
-		family: "production",
-		needed: true,
-		label: "Faire passer les tests automatisés avant chaque mise en ligne",
-		short: "tests automatisés",
-		reason: "Une régression est arrêtée avant d'atteindre les utilisateurs.",
-	},
-	{
-		id: "rollback",
-		family: "production",
-		needed: true,
-		label: "Prévoir un retour arrière en une commande",
-		short: "retour arrière",
-		reason: "Si la nouvelle version déraille, l'ancienne revient aussitôt.",
-	},
-	{
-		id: "rate-limit",
-		family: "production",
-		needed: true,
-		label: "Plafonner le débit des appels au modèle",
-		short: "limites de débit",
-		reason: "Un pic de trafic ne fait exploser ni la facture ni le service.",
-	},
-	{
-		id: "call-logs",
-		family: "production",
-		needed: true,
-		label: "Journaliser chaque appel au modèle : durée, erreurs, volume",
-		short: "journal des appels",
-		reason: "Au premier incident, on sait ce qui s'est passé, et quand.",
-	},
-	{
-		id: "alerts",
-		family: "production",
-		needed: true,
-		label: "Brancher des alertes sur les erreurs et la lenteur",
-		short: "alertes",
-		reason: "L'équipe est prévenue avant que les utilisateurs ne se plaignent.",
-	},
-	{
-		id: "fallback",
-		family: "production",
-		needed: true,
-		label: "Prévoir une réponse de secours quand le modèle ne répond pas",
-		short: "plan de secours",
-		reason: "Une panne du fournisseur ne bloque pas tout le monde.",
-	},
-	{
-		id: "shared-library",
-		family: "production",
-		needed: true,
-		label: "Appeler le modèle par la librairie partagée de l'équipe",
-		short: "librairie partagée",
-		reason:
-			"Reprises, journaux et limites sont réglés une fois, pour tous les projets.",
-	},
-	// Production: traps.
-	{
-		id: "skip-tests",
-		family: "production",
-		needed: false,
-		label: "Désactiver les tests pour livrer plus vite",
-		short: "tests coupés",
-		reason: "Le temps gagné aujourd'hui se paie en panne demain.",
-		shout: "Sans les tests ?!",
-	},
-	{
-		id: "friday",
-		family: "production",
-		needed: false,
-		label: "Déployer le vendredi à 18 h, sans retour arrière",
-		short: "vendredi 18 h",
-		reason:
-			"Au premier incident, personne n'est là et rien ne peut être annulé.",
-		shout: "Un vendredi à 18 h ?!",
-	},
-	{
-		id: "auto-upgrade",
-		family: "production",
-		needed: false,
-		label: "Passer à chaque nouvelle version du modèle dès sa sortie",
-		short: "modèle non réévalué",
-		reason:
-			"Sans réévaluation, les réponses changent sans que personne ne l'ait vérifié.",
-		shout: "Et la réévaluation ?!",
-	},
-	// Security: needed.
-	{
-		id: "vault",
-		family: "security",
-		needed: true,
-		label: "Ranger la clé d'API dans un coffre-fort de secrets",
-		short: "coffre-fort",
-		reason: "La clé ne traîne ni dans le code ni dans l'historique.",
-	},
-	{
-		id: "security-review",
-		family: "security",
-		needed: true,
-		label: "Faire relire la sécurité avant l'ouverture",
-		short: "revue de sécurité",
-		reason: "Un regard extérieur repère ce que l'équipe ne voit plus.",
-	},
-	{
-		id: "access",
-		family: "security",
-		needed: true,
-		label: "Réserver l'accès aux équipes autorisées",
-		short: "accès restreint",
-		reason: "Le service n'est ouvert qu'à ceux qui en ont besoin.",
-	},
-	{
-		id: "input-filter",
-		family: "security",
-		needed: true,
-		label: "Filtrer les entrées avant de les confier au modèle",
-		short: "entrées filtrées",
-		reason: "Une requête piégée est arrêtée à la porte.",
-	},
-	// Security: traps.
-	{
-		id: "key-in-code",
-		family: "security",
-		needed: false,
-		label: "Coller la clé d'API directement dans le code",
-		short: "clé dans le code",
-		reason: "Au premier partage du dépôt, la clé fuit avec lui.",
-		shout: "La clé dans le code ?!",
-	},
-	{
-		id: "clear-logs",
-		family: "security",
-		needed: false,
-		label: "Journaliser les données personnelles en clair, pour déboguer",
-		short: "données en clair",
-		reason: "Les journaux deviennent une fuite de données en attente.",
-		shout: "Des données en clair ?!",
-	},
-	{
-		id: "admin",
-		family: "security",
-		needed: false,
-		label:
-			"Donner au service les droits d'administrateur, pour éviter les blocages",
-		short: "droits d'admin",
-		reason: "Au moindre détournement, toutes les portes sont ouvertes.",
-		shout: "Tous les droits ?!",
-	},
-	// Documentation: needed.
-	{
-		id: "runbook",
-		family: "docs",
-		needed: true,
-		label: "Rédiger le guide d'exploitation : relancer, diagnostiquer, alerter",
-		short: "guide d'exploitation",
-		reason: "L'astreinte sait quoi faire sans appeler l'auteur.",
-	},
-	{
-		id: "api-doc",
-		family: "docs",
-		needed: true,
-		label: "Documenter l'API pour les équipes qui l'appellent",
-		short: "doc de l'API",
-		reason: "Les équipes branchent le service sans deviner les formats.",
-	},
-	{
-		id: "known-limits",
-		family: "docs",
-		needed: true,
-		label: "Écrire ce que le service sait faire, et ce qu'il ne sait pas faire",
-		short: "limites connues",
-		reason: "Personne ne lui confie une tâche pour laquelle il n'est pas fait.",
-	},
-	// Documentation: traps.
-	{
-		id: "code-is-doc",
-		family: "docs",
-		needed: false,
-		label: "Laisser le code servir de documentation",
-		short: "le code pour doc",
-		reason: "Le code dit comment, pas pourquoi, ni quoi faire en cas de panne.",
-		shout: "Le code, une doc ?!",
-	},
-	{
-		id: "doc-later",
-		family: "docs",
-		needed: false,
-		label: "Documenter après le lancement, quand ce sera calme",
-		short: "doc à plus tard",
-		reason: "Après un lancement, ce n'est jamais calme.",
-		shout: "Ce ne sera jamais calme !",
-	},
+	{ id: "tests", family: "production", needed: true },
+	{ id: "rollback", family: "production", needed: true },
+	{ id: "rate-limit", family: "production", needed: true },
+	{ id: "call-logs", family: "production", needed: true },
+	{ id: "alerts", family: "production", needed: true },
+	{ id: "fallback", family: "production", needed: true },
+	{ id: "shared-library", family: "production", needed: true },
+	{ id: "skip-tests", family: "production", needed: false },
+	{ id: "friday", family: "production", needed: false },
+	{ id: "auto-upgrade", family: "production", needed: false },
+	{ id: "vault", family: "security", needed: true },
+	{ id: "security-review", family: "security", needed: true },
+	{ id: "access", family: "security", needed: true },
+	{ id: "input-filter", family: "security", needed: true },
+	{ id: "key-in-code", family: "security", needed: false },
+	{ id: "clear-logs", family: "security", needed: false },
+	{ id: "admin", family: "security", needed: false },
+	{ id: "runbook", family: "docs", needed: true },
+	{ id: "api-doc", family: "docs", needed: true },
+	{ id: "known-limits", family: "docs", needed: true },
+	{ id: "code-is-doc", family: "docs", needed: false },
+	{ id: "doc-later", family: "docs", needed: false },
 ];
 
 /** Mulberry32: a tiny seeded generator, enough for shuffling cards. */

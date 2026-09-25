@@ -18,6 +18,7 @@ export class Cook {
 	private readonly carried: THREE.Group;
 	private walking = false;
 	private stirring = false;
+	private waving = 0;
 	private phase = Math.random() * Math.PI * 2;
 	private readonly eyes: THREE.Mesh[] = [];
 	private nextBlink = 1 + Math.random() * 3;
@@ -213,6 +214,11 @@ export class Cook {
 			.to(this.body.rotation, { x: 0, duration: 0.3, ease: "power2.inOut" });
 	}
 
+	/** Waves hello with the left arm, for a few seconds. */
+	wave(seconds = 1.8) {
+		this.waving = seconds;
+	}
+
 	/** Stirs a pot with the right arm while standing still. */
 	setStirring(on: boolean) {
 		this.stirring = on;
@@ -235,6 +241,12 @@ export class Cook {
 			}
 			this.body.position.y = Math.abs(Math.sin(this.phase)) * 0.06;
 		} else {
+			if (this.waving > 0) {
+				this.waving -= delta;
+				this.arms[0].rotation.z = -2.5 + Math.sin(this.phase * 4) * 0.35;
+			} else {
+				this.arms[0].rotation.z *= 0.85;
+			}
 			for (const leg of this.legs) leg.rotation.x *= 0.8;
 			if (!this.carried.visible)
 				for (const arm of this.arms) arm.rotation.x *= 0.85;

@@ -608,13 +608,18 @@
 	transform: translateY(-3px);
 }
 
-/* Sound toggle, top right. */
+/* Sound toggle and language switch, top right. */
 
-.sound-toggle {
+.brigade-corner {
 	position: absolute;
 	top: 20px;
 	right: 24px;
 	z-index: 2;
+	display: flex;
+	gap: 0.5rem;
+}
+
+.sound-toggle {
 	padding: 0.4rem 0.75rem;
 	font: inherit;
 	font-size: 0.8rem;
@@ -630,6 +635,35 @@
 	color: var(--ink);
 	background: var(--lamp);
 	border-color: var(--lamp);
+}
+
+/* Same frame as the sound toggle: the current language is filled, the other one is the link. */
+.lang-switch {
+	display: flex;
+	font-size: 0.8rem;
+	font-weight: 700;
+	border: 1.5px solid var(--on-night-soft);
+	border-radius: 2px;
+}
+
+.lang-switch > * {
+	display: grid;
+	place-items: center;
+	padding: 0.4rem 0.6rem;
+}
+
+.lang-switch [aria-current] {
+	color: var(--night);
+	background: var(--on-night-soft);
+}
+
+.lang-switch a {
+	color: var(--on-night);
+	text-decoration: none;
+}
+
+.lang-switch a:hover {
+	color: var(--lamp);
 }
 
 .panel.visit {
@@ -974,11 +1008,27 @@
 }
 
 @media (max-width: 760px) {
-	.sound-toggle {
+	/* Stacked, so the pair stays clear of the name on a phone. */
+	.brigade-corner {
 		top: 16px;
 		right: 16px;
-		padding: 0.3rem 0.55rem;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 0.3rem;
+	}
+
+	.sound-toggle,
+	.lang-switch {
 		font-size: 0.72rem;
+		line-height: 1.2;
+	}
+
+	.sound-toggle {
+		padding: 0.3rem 0.55rem;
+	}
+
+	.lang-switch > * {
+		padding: 0.3rem 0.5rem;
 	}
 
 	.rush {
@@ -1078,4 +1128,58 @@
 .tag:focus-visible,
 .order:focus-visible {
 	outline-color: var(--ink);
+}
+
+/* The ticket, when a language model read the offer: its lines are in the model's blue and
+   hand, and the pass adds red ticks. Lines the check refused never reach the ticket. */
+
+.ticket-lines li.is-reading {
+	display: block;
+	--casl: 1;
+	--mono: 0;
+	font-family: var(--font);
+	font-weight: 650;
+	color: var(--model);
+	animation: reading 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes reading {
+	to {
+		opacity: 0.45;
+	}
+}
+
+.ticket-lines li.is-model {
+	--casl: 1;
+	--mono: 0;
+	grid-template-columns: 2.4rem minmax(0, 1fr) 1rem;
+	font-family: var(--font);
+	font-weight: 600;
+	color: var(--model);
+}
+
+.ticket-tick {
+	justify-self: end;
+	font-weight: 900;
+	color: var(--check);
+	opacity: 0;
+}
+
+.dish-outside {
+	margin-top: 0.6rem;
+	padding-top: 0.5rem;
+	border-top: 1.5px dashed var(--ink);
+}
+
+.write-privacy {
+	margin-top: 0.4rem;
+	font-size: 0.78rem;
+	line-height: 1.4;
+	color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ticket-lines li.is-reading {
+		animation: none;
+	}
 }

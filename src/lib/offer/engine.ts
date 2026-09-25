@@ -178,16 +178,30 @@ export function detect(segments: Segment[]): Evidence[] {
 	return evidence.sort((a, b) => a.segment - b.segment || a.start - b.start);
 }
 
+/**
+ * Weight of a skill in the order: its base weight, raised a little each time the offer
+ * comes back to it, and scaled by how firmly the offer asks for it (1 = required).
+ */
+export function demandWeight(
+	competence: CompetenceId,
+	count: number,
+	factor = 1,
+): number {
+	const base = competenceById.get(competence)?.weight ?? 1;
+	const repeat = Math.min(1 + REPEAT_BONUS * (count - 1), REPEAT_CAP);
+	return round(base * repeat * factor);
+}
+
 export function toDemand(evidence: Evidence[]): Demand[] {
 	const counts = new Map<CompetenceId, number>();
 	for (const e of evidence)
 		counts.set(e.competence, (counts.get(e.competence) ?? 0) + 1);
 	return [...counts.entries()]
-		.map(([competence, count]) => {
-			const base = competenceById.get(competence)?.weight ?? 1;
-			const repeat = Math.min(1 + REPEAT_BONUS * (count - 1), REPEAT_CAP);
-			return { competence, count, weight: round(base * repeat) };
-		})
+		.map(([competence, count]) => ({
+			competence,
+			count,
+			weight: demandWeight(competence, count),
+		}))
 		.sort((a, b) => b.weight - a.weight || b.count - a.count);
 }
 

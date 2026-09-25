@@ -1,6 +1,6 @@
 import gsap from "gsap";
-import type { StationGame } from "../types";
-import { copy, fr } from "./copy";
+import type { Lang, StationGame } from "../types";
+import { copy, fr, textFor } from "./copy";
 import {
 	type Assistant,
 	type Audit,
@@ -24,14 +24,14 @@ import {
 import "./game.css";
 
 /**
- * « La mise en service » : compose the tray of an AI service going to production,
- * ring « Service ! » and watch the chef check every card; then weight the criteria
+ * « La mise en service » (“Ready for service” in English): compose the tray of an AI service
+ * going to production, ring « Service ! » and watch the chef check every card; then weight the criteria
  * of a bench of three fictional code assistants and see the ranking follow.
  */
 
 type Phase = "pick" | "audit" | "verdict" | "bench" | "end";
 
-/** Creates an element; every visible string goes through French typography. */
+/** Creates an element. Its text is already final: textFor() typesets the French. */
 function el<K extends keyof HTMLElementTagNameMap>(
 	tag: K,
 	className?: string,
@@ -39,7 +39,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 ): HTMLElementTagNameMap[K] {
 	const node = document.createElement(tag);
 	if (className) node.className = className;
-	if (text !== undefined) node.textContent = fr(text);
+	if (text !== undefined) node.textContent = text;
 	return node;
 }
 
@@ -76,10 +76,7 @@ function note(heading: string, lines: readonly string[]) {
 	return { box, title };
 }
 
-const oneDecimal = new Intl.NumberFormat("fr-FR", {
-	minimumFractionDigits: 1,
-	maximumFractionDigits: 1,
-});
+const LOCALES: Record<Lang, string> = { fr: "fr-FR", en: "en-GB" };
 
 interface CardView {
 	card: Card;
@@ -113,13 +110,19 @@ interface RowView {
 }
 
 export const game: StationGame = {
-	title: copy.title,
-	intro: copy.intro,
+	title: { fr: fr(copy.fr.title), en: copy.en.title },
+	intro: { fr: fr(copy.fr.intro), en: copy.en.intro },
 	mount(root, context) {
 		const { sound, reducedMotion } = context;
-		const say = (text: string) => context.say(fr(text));
+		// The same ids and rules in both languages: only the words change.
+		const { copy: t, cards } = textFor(context.lang);
+		const oneDecimal = new Intl.NumberFormat(LOCALES[context.lang], {
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1,
+		});
+		const say = (text: string) => context.say(text);
 		const setText = (node: HTMLElement, text: string) => {
-			node.textContent = fr(text);
+			node.textContent = text;
 		};
 
 		// Every tween and timeline goes through track(), so cleanup can kill them all.
@@ -154,17 +157,17 @@ export const game: StationGame = {
 
 		// Where the visitor is: three steps, the current one marked.
 		const steps = el("ol", "g-tools-steps");
-		steps.setAttribute("aria-label", fr(copy.stepsLabel));
-		const stepItems = copy.steps.map((label, i) => {
+		steps.setAttribute("aria-label", t.stepsLabel);
+		const stepItems = t.steps.map((label, i) => {
 			const item = el("li");
-			item.append(el("span", "g-tools-step-n", String(i + 1)), fr(` ${label}`));
+			item.append(el("span", "g-tools-step-n", String(i + 1)), ` ${label}`);
 			steps.append(item);
 			return item;
 		});
 
 		// Part one: the tray.
 		const pickPhase = el("section", "g-tools-phase");
-		const pickNote = note(copy.pick.heading, copy.pick.rules);
+		const pickNote = note(t.pick.heading, t.pick.rules);
 
 		const bar = el("div", "g-tools-bar");
 		const plate = el("div", "g-tools-plate");
@@ -179,8 +182,8 @@ export const game: StationGame = {
 		});
 		const count = el("p", "g-tools-count");
 		const service = button("g-tools-service", "");
-		service.append(bell(), el("span", undefined, copy.pick.service));
-		const next = button("g-tools-primary", copy.pick.next);
+		service.append(bell(), el("span", undefined, t.pick.service));
+		const next = button("g-tools-primary", t.pick.next);
 		const action = el("div", "g-tools-action");
 		action.append(count, service, next);
 		const status = el("p", "g-tools-status");
@@ -188,18 +191,18 @@ export const game: StationGame = {
 		bar.append(plate, action, status);
 
 		const tally = el("ul", "g-tools-tally");
-		tally.setAttribute("aria-label", fr(copy.pick.tallyLabel));
+		tally.setAttribute("aria-label", t.pick.tallyLabel);
 		const cardList = el("ul", "g-tools-cards");
-		cardList.setAttribute("aria-label", fr(copy.pick.cardsLabel));
+		cardList.setAttribute("aria-label", t.pick.cardsLabel);
 		pickPhase.append(pickNote.box, bar, tally, cardList);
 
 		// Part two: the bench. Sliders on one side, the live ranking on the other.
 		const benchPhase = el("section", "g-tools-phase");
-		const benchNote = note(copy.bench.heading, copy.bench.rules);
+		const benchNote = note(t.bench.heading, t.bench.rules);
 		const benchGrid = el("div", "g-tools-bench");
 
 		const weightsBox = el("fieldset", "g-tools-weights");
-		weightsBox.append(el("legend", undefined, copy.bench.weightsLegend));
+		weightsBox.append(el("legend", undefined, t.bench.weightsLegend));
 		const weightViews = new Map<Criterion, WeightView>();
 		for (const criterion of CRITERIA) {
 			const id = `g-tools-weight-${criterion}`;
@@ -210,7 +213,7 @@ export const game: StationGame = {
 			const label = el(
 				"label",
 				"g-tools-weight-name",
-				copy.bench.criteria[criterion],
+				t.bench.criteria[criterion],
 			);
 			label.htmlFor = id;
 			const level = el("span", "g-tools-level");
@@ -236,13 +239,13 @@ export const game: StationGame = {
 		const leaderLine = el("p", "g-tools-leader");
 		leaderLine.setAttribute("aria-live", "polite");
 		const ranking = el("ol", "g-tools-ranking");
-		ranking.setAttribute("aria-label", fr(copy.bench.rankingLabel));
+		ranking.setAttribute("aria-label", t.bench.rankingLabel);
 		const rows = new Map<string, RowView>();
 		for (const letter of LETTERS) {
 			const row = el("li", "g-tools-row");
 			row.dataset.letter = letter;
 			const rankNode = el("span", "g-tools-rank");
-			const name = el("span", "g-tools-name", copy.bench.assistant(letter));
+			const name = el("span", "g-tools-name", t.bench.assistant(letter));
 			const meter = el("span", "g-tools-meter");
 			meter.setAttribute("aria-hidden", "true");
 			const fills = new Map<Criterion, HTMLSpanElement>();
@@ -276,13 +279,13 @@ export const game: StationGame = {
 		benchGrid.append(weightsBox, board, benchLine);
 
 		const benchActions = el("div", "g-tools-actions");
-		const finish = button("g-tools-primary", copy.bench.finish);
+		const finish = button("g-tools-primary", t.bench.finish);
 		benchActions.append(finish);
 		benchPhase.append(benchNote.box, benchGrid, benchActions);
 
 		// The end.
 		const endPhase = el("section", "g-tools-phase g-tools-end");
-		const endTitle = el("h3", undefined, copy.end.heading);
+		const endTitle = el("h3", undefined, t.end.heading);
 		endTitle.tabIndex = -1;
 		const scores = el("ul", "g-tools-scores");
 		const trayScore = el("li");
@@ -290,19 +293,19 @@ export const game: StationGame = {
 		scores.append(trayScore, benchScore);
 		const real = el("div", "g-tools-real");
 		real.append(
-			el("p", "g-tools-real-tag", copy.end.realTag),
-			...copy.end.real.map((line) => el("p", undefined, line)),
-			el("p", "g-tools-real-more", copy.end.libraries),
+			el("p", "g-tools-real-tag", t.end.realTag),
+			...t.end.real.map((line) => el("p", undefined, line)),
+			el("p", "g-tools-real-more", t.end.libraries),
 		);
 		const endActions = el("div", "g-tools-actions");
-		const again = button("g-tools-primary", copy.end.again);
-		const back = button("g-tools-secondary", copy.end.back);
+		const again = button("g-tools-primary", t.end.again);
+		const back = button("g-tools-secondary", t.end.back);
 		endActions.append(again, back);
 		endPhase.append(
 			endTitle,
 			scores,
 			real,
-			el("p", "g-tools-fine", copy.end.fiction),
+			el("p", "g-tools-fine", t.end.fiction),
 			endActions,
 		);
 
@@ -331,8 +334,8 @@ export const game: StationGame = {
 					const chip = el("span", "g-tools-chip");
 					chip.setAttribute("aria-hidden", "true");
 					pick.append(
-						el("span", "g-tools-family", copy.families[card.family]),
-						el("span", "g-tools-label", card.label),
+						el("span", "g-tools-family", t.families[card.family]),
+						el("span", "g-tools-label", cards[card.id].label),
 						chip,
 					);
 					pick.addEventListener("click", () => onPick(card));
@@ -362,16 +365,16 @@ export const game: StationGame = {
 				const on = picked.includes(view.card.id);
 				view.pick.setAttribute("aria-pressed", String(on));
 				view.item.dataset.picked = String(on);
-				setText(view.chip, on ? copy.pick.onTray : copy.pick.add);
+				setText(view.chip, on ? t.pick.onTray : t.pick.add);
 			}
 			slots.forEach((slot, i) => {
 				const card = i < picked.length ? views.get(picked[i])?.card : undefined;
 				slot.slot.dataset.filled = String(card !== undefined);
 				slot.slot.removeAttribute("data-right");
-				setText(slot.name, card?.short ?? "");
+				setText(slot.name, card ? cards[card.id].short : "");
 				slot.mark.textContent = "";
 			});
-			setText(count, copy.pick.count(picked.length, TRAY_SIZE));
+			setText(count, t.pick.count(picked.length, TRAY_SIZE));
 			service.disabled = picked.length < TRAY_SIZE;
 			const slot = addedId ? slots[picked.indexOf(addedId)] : undefined;
 			if (slot && !reducedMotion) {
@@ -389,7 +392,7 @@ export const game: StationGame = {
 			if (phase !== "pick") return;
 			const outcome = togglePick(picked, card.id);
 			if (outcome.change === "full") {
-				setText(status, copy.pick.full);
+				setText(status, t.pick.full);
 				sound.bad();
 				if (!reducedMotion) {
 					track(
@@ -413,11 +416,11 @@ export const game: StationGame = {
 			const left = TRAY_SIZE - picked.length;
 			const head =
 				outcome.change === "added"
-					? copy.pick.added(card.short)
-					: copy.pick.removed(card.short);
+					? t.pick.added(cards[card.id].short)
+					: t.pick.removed(cards[card.id].short);
 			setText(
 				status,
-				`${head} ${left ? copy.pick.remaining(left) : copy.pick.ready}`,
+				`${head} ${left ? t.pick.remaining(left) : t.pick.ready}`,
 			);
 		};
 
@@ -425,8 +428,8 @@ export const game: StationGame = {
 		const reveal = (verdict: CardVerdict, animate: boolean) => {
 			const view = views.get(verdict.card.id);
 			if (!view) return;
-			setText(view.stamp, copy.pick.verdicts[verdict.kind]);
-			setText(view.reason, verdict.card.reason);
+			setText(view.stamp, t.pick.verdicts[verdict.kind]);
+			setText(view.reason, cards[verdict.card.id].reason);
 			view.verdict.hidden = false;
 			view.item.dataset.kind = verdict.kind;
 			view.item.dataset.right = String(verdict.right);
@@ -471,7 +474,7 @@ export const game: StationGame = {
 					item.dataset.right = String(right === total);
 					item.append(
 						el("span", "g-tools-sym", right === total ? "✓" : "✗"),
-						fr(` ${copy.families[family]} ${right} / ${total}`),
+						` ${t.families[family]} ${right} / ${total}`,
 					);
 					return item;
 				}),
@@ -481,13 +484,11 @@ export const game: StationGame = {
 
 		const finishAudit = (checked: Audit) => {
 			setPhase("verdict");
-			setText(count, copy.pick.score(checked.right, checked.total));
+			setText(count, t.pick.score(checked.right, checked.total));
 			count.dataset.final = "";
 			setText(
 				status,
-				checked.served
-					? copy.pick.served
-					: copy.pick.refused(checked.traps.length),
+				checked.served ? t.pick.served : t.pick.refused(checked.traps.length),
 			);
 			renderTally(checked);
 			service.hidden = true;
@@ -495,10 +496,11 @@ export const game: StationGame = {
 			next.focus({ preventScroll: true });
 			if (checked.served) {
 				sound.good();
-				say(copy.say.served);
+				say(t.say.served);
 			} else {
 				sound.bad();
-				say(checked.traps[0]?.shout ?? copy.say.refused);
+				const trap = checked.traps.at(0);
+				say((trap && cards[trap.id].shout) ?? t.say.refused);
 			}
 		};
 
@@ -513,7 +515,7 @@ export const game: StationGame = {
 			}
 			service.disabled = true;
 			sound.bell();
-			setText(status, copy.pick.checking);
+			setText(status, t.pick.checking);
 			if (reducedMotion) {
 				for (const verdict of checked.verdicts) reveal(verdict, false);
 				sound.stamp();
@@ -539,7 +541,7 @@ export const game: StationGame = {
 		const renderWeight = (criterion: Criterion) => {
 			const view = weightViews.get(criterion);
 			if (!view) return;
-			const level = fr(copy.bench.levels[weights[criterion]] ?? "");
+			const level = t.bench.levels[weights[criterion]] ?? "";
 			view.input.value = String(weights[criterion]);
 			view.input.setAttribute("aria-valuetext", level);
 			view.level.textContent = level;
@@ -550,10 +552,7 @@ export const game: StationGame = {
 				const done = found.has(letter);
 				view.row.dataset.found = String(done);
 				view.goal.textContent = done ? "✓" : "○";
-				setText(
-					view.goalHint,
-					done ? copy.bench.goalFound : copy.bench.goalMissing,
-				);
+				setText(view.goalHint, done ? t.bench.goalFound : t.bench.goalMissing);
 			}
 		};
 
@@ -585,7 +584,7 @@ export const game: StationGame = {
 				view.rank.textContent = String(i + 1);
 				view.score.replaceChildren(
 					oneDecimal.format(standing.score),
-					el("span", "g-tools-sr", copy.bench.outOf),
+					el("span", "g-tools-sr", t.bench.outOf),
 				);
 				for (const criterion of CRITERIA) {
 					const fill = view.fills.get(criterion);
@@ -611,11 +610,10 @@ export const game: StationGame = {
 				}
 			});
 
-			const line = fr(
+			const line =
 				state.kind === "lead"
-					? copy.bench.lead(state.letter)
-					: copy.bench[state.kind],
-			);
+					? t.bench.lead(state.letter)
+					: t.bench[state.kind];
 			// Only a change is announced, not every slider step.
 			if (leaderLine.textContent !== line) leaderLine.textContent = line;
 
@@ -624,14 +622,14 @@ export const game: StationGame = {
 				renderGoals();
 				sound.good();
 				if (found.size === LETTERS.length) {
-					setText(benchLine, copy.bench.allFound);
-					say(copy.say.allFound);
+					setText(benchLine, t.bench.allFound);
+					say(t.say.allFound);
 				} else {
 					setText(
 						benchLine,
-						copy.bench.firstLead(state.letter, found.size, LETTERS.length),
+						t.bench.firstLead(state.letter, found.size, LETTERS.length),
 					);
-					say(copy.say.lead(state.letter));
+					say(t.say.lead(state.letter));
 				}
 			}
 		};
@@ -652,10 +650,10 @@ export const game: StationGame = {
 					.map((a) => `${a.letter} ${a.scores[criterion]}`)
 					.join(" · ");
 				const view = weightViews.get(criterion);
-				if (view) setText(view.notes, copy.bench.notes(notes));
+				if (view) setText(view.notes, t.bench.notes(notes));
 			}
 			leaderLine.textContent = "";
-			setText(benchLine, copy.bench.challenge(0, LETTERS.length));
+			setText(benchLine, t.bench.challenge(0, LETTERS.length));
 			renderGoals();
 			renderBoard(false);
 		};
@@ -668,7 +666,7 @@ export const game: StationGame = {
 			resetBench();
 			benchNote.title.focus();
 			sound.pop();
-			say(copy.say.bench);
+			say(t.say.bench);
 		};
 
 		const goEnd = () => {
@@ -677,14 +675,14 @@ export const game: StationGame = {
 			showStep(2);
 			const right = result?.right ?? 0;
 			const total = result?.total ?? TRAY_SIZE;
-			setText(trayScore, copy.end.tray(right, total));
-			setText(benchScore, copy.end.bench(found.size, LETTERS.length));
+			setText(trayScore, t.end.tray(right, total));
+			setText(benchScore, t.end.bench(found.size, LETTERS.length));
 			endTitle.focus();
 			sound.bell();
 			say(
 				right === total && found.size === LETTERS.length
-					? copy.say.perfect
-					: copy.say.end,
+					? t.say.perfect
+					: t.say.end,
 			);
 		};
 
@@ -698,7 +696,7 @@ export const game: StationGame = {
 			renderHand();
 			renderPicks(null);
 			delete count.dataset.final;
-			setText(status, copy.pick.start);
+			setText(status, t.pick.start);
 			tally.replaceChildren();
 			tally.hidden = true;
 			service.hidden = false;
@@ -708,7 +706,7 @@ export const game: StationGame = {
 				pickNote.title.focus();
 				sound.pop();
 			}
-			say(copy.say.start);
+			say(t.say.start);
 		};
 
 		service.addEventListener("click", onService);

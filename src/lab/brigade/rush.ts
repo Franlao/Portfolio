@@ -1,30 +1,47 @@
-import { copy } from "../../components/demos/claims-agent/copy";
 import {
+	type CheckId,
 	type ClaimFile,
 	type Outcome,
 	type PieceId,
 	run,
 } from "../../components/demos/claims-agent/engine";
+import { defaultLang, type Lang } from "../../i18n/ui";
+import { copy, verdictReasons } from "./copy";
 
 /**
  * « Coup de feu au passe » : claims arrive one after another, the player decides,
  * then the chef (the real claims engine) gives its verdict and the reason.
  */
 
+export type RushCaseId =
+	| "clean"
+	| "no-quote"
+	| "late"
+	| "storm"
+	| "disputed"
+	| "ceiling"
+	| "shared";
+
 export interface RushCase {
-	id: string;
-	story: string;
+	id: RushCaseId;
+	/** What the ticket tells, in both languages (the text lives in copy.ts). */
+	story: Record<Lang, string>;
 	file: ClaimFile;
 	/** What the rules expect. The tests check the engine agrees. */
 	expected: Outcome;
 }
+
+const story = (id: RushCaseId): Record<Lang, string> => ({
+	fr: copy.fr.rush.stories[id],
+	en: copy.en.rush.stories[id],
+});
 
 const all: PieceId[] = ["declaration", "photos", "quote"];
 
 export const rushCases: RushCase[] = [
 	{
 		id: "clean",
-		story: "Le camion a reculé dans le portail du voisin. Tout est là.",
+		story: story("clean"),
 		file: {
 			pieces: all,
 			delayDays: 3,
@@ -35,7 +52,7 @@ export const rushCases: RushCase[] = [
 	},
 	{
 		id: "no-quote",
-		story: "Marche arrière, portail plié. L'assuré a envoyé ses photos.",
+		story: story("no-quote"),
 		file: {
 			pieces: ["declaration", "photos"],
 			delayDays: 2,
@@ -46,8 +63,7 @@ export const rushCases: RushCase[] = [
 	},
 	{
 		id: "late",
-		story:
-			"Un rétroviseur contre un portail, déclaré après le week-end prolongé.",
+		story: story("late"),
 		file: {
 			pieces: all,
 			delayDays: 9,
@@ -58,7 +74,7 @@ export const rushCases: RushCase[] = [
 	},
 	{
 		id: "storm",
-		story: "Une branche est tombée sur le portail pendant l'orage de la nuit.",
+		story: story("storm"),
 		file: {
 			pieces: all,
 			delayDays: 1,
@@ -69,7 +85,7 @@ export const rushCases: RushCase[] = [
 	},
 	{
 		id: "disputed",
-		story: "Le chauffeur jure que le portail était déjà abîmé.",
+		story: story("disputed"),
 		file: {
 			pieces: all,
 			delayDays: 4,
@@ -80,8 +96,7 @@ export const rushCases: RushCase[] = [
 	},
 	{
 		id: "ceiling",
-		story:
-			"Le portail en fer forgé d'une maison de maître, entièrement à refaire.",
+		story: story("ceiling"),
 		file: {
 			pieces: all,
 			delayDays: 2,
@@ -92,7 +107,7 @@ export const rushCases: RushCase[] = [
 	},
 	{
 		id: "shared",
-		story: "Versions contradictoires, mais le voisin a signé son attestation.",
+		story: story("shared"),
 		file: {
 			pieces: [...all, "statement"],
 			delayDays: 3,
@@ -107,53 +122,33 @@ export const ROUNDS = 6;
 
 export interface Verdict {
 	outcome: Outcome;
-	/** Human-readable reasons, in French. */
+	/** Human-readable reasons, plain text in the requested language (main.ts applies French typography). */
 	reasons: string[];
 	/** Time the engine took, measured for real. */
 	ms: number;
 }
 
 /** Runs the real claims engine on a case and explains its decision. */
-export function judge(file: ClaimFile): Verdict {
+export function judge(file: ClaimFile, lang: Lang = defaultLang): Verdict {
 	const start = performance.now();
-	const result = run(file, "fr");
+	const result = run(file, lang);
 	const ms = performance.now() - start;
-	const t = copy.fr;
+	const t = verdictReasons[lang];
 	const missing = result.traces.find((trace) => trace.node === "missing")
 		?.output as { request: PieceId[] } | undefined;
 	const consistency = result.traces.find(
 		(trace) => trace.node === "consistency",
-	)?.output as
-		| { checks: { id: keyof typeof t.checks; passed: boolean }[] }
-		| undefined;
+	)?.output as { checks: { id: CheckId; passed: boolean }[] } | undefined;
 	const reasons =
 		result.outcome === "missing" && missing
-			? missing.request.map(
-					(piece) => `Pièce manquante : ${t.pieces[piece].toLowerCase()}`,
+			? missing.request.map((piece) =>
+					t.missing(copy[lang].rush.pieces[piece].toLowerCase()),
 				)
 			: result.outcome === "escalation" && consistency
-				? consistency.checks
-						.filter((c) => !c.passed)
-						.map((c) => failedCheck[c.id])
-				: ["Dossier complet, dans les délais et sous le plafond"];
+				? consistency.checks.filter((c) => !c.passed).map((c) => t.failed[c.id])
+				: [t.complete];
 	return { outcome: result.outcome, reasons, ms };
 }
-
-const failedCheck: Record<string, string> = {
-	source: "La citation du modèle ne vient d'aucune pièce reçue",
-	classified: "Une pièce n'a pas été classée",
-	required: "Une pièce obligatoire manque",
-	delay: "Déclaration hors délai",
-	ceiling: "Montant au-dessus du plafond",
-	liability: "Responsabilité non établie",
-	exclusion: "Exclusion possible : événement climatique",
-};
-
-export const outcomeLabel: Record<Outcome, string> = {
-	offer: "Proposer l'indemnisation",
-	missing: "Réclamer une pièce",
-	escalation: "Transmettre au gestionnaire",
-};
 
 /** Picks the rounds of a game: every outcome appears, the order changes each time. */
 export function deal(random: () => number = Math.random): RushCase[] {

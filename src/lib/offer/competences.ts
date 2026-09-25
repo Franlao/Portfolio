@@ -119,7 +119,10 @@ export const competences = [
 	},
 	{
 		id: "production",
-		label: { fr: "mise en production", en: "production delivery" },
+		label: {
+			fr: "génie logiciel et mise en production",
+			en: "software engineering and delivery",
+		},
 		weight: 2,
 		terms: [
 			"production",
@@ -140,6 +143,13 @@ export const competences = [
 			"librairies internes",
 			"internal libraries",
 			"sdk",
+			"developpement logiciel",
+			"software engineering",
+			"tests unitaires",
+			"unit tests",
+			"tests automatises",
+			"automated tests",
+			"git",
 		],
 	},
 	{

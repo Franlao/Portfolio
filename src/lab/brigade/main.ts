@@ -8,15 +8,23 @@ import type {
 	Outcome,
 	PieceId,
 } from "../../components/demos/claims-agent/engine";
+import type { Lang } from "../../i18n/ui";
 import { competenceById, competences } from "../../lib/offer/competences";
-import { type Analysis, analyze } from "../../lib/offer/engine";
+import { countWords, MIN_WORDS } from "../../lib/offer/engine";
 import { presets } from "../../lib/offer/presets";
+import type { Order } from "../../lib/offer/reader";
+import { readOffer } from "../../lib/offer/remote";
 import type { ProjectCard } from "../../lib/projects";
 import { frTypo } from "../../lib/typo";
 import { Cook, crate } from "./cook";
+import { copy, intlLocale } from "./copy";
 import { games } from "./games";
 import { buildKitchen, type StationRuntime } from "./kitchen";
-import { deal, judge, outcomeLabel, type Round, score } from "./rush";
+import { prologueCopy } from "./prologue/copy";
+import { createNarration } from "./prologue/narration";
+import { Person } from "./prologue/people";
+import { arrive, CHEF_TABLE, shouldArrive } from "./prologue/prologue";
+import { deal, judge, type Round, score } from "./rush";
 import { Sound } from "./sound";
 import type { StationId } from "./stations";
 import { outline, palette, toon } from "./toon";
@@ -30,6 +38,9 @@ const FOOD: Record<StationId, number> = {
 	tools: palette.copper,
 };
 
+/** The usual three-quarter view of the kitchen, from the front right corner. */
+const REST_DIRECTION = new THREE.Vector3(1, 0.86, 1).normalize();
+
 const reducedMotion = window.matchMedia(
 	"(prefers-reduced-motion: reduce)",
 ).matches;
@@ -38,11 +49,11 @@ const wait = (seconds: number) =>
 // Uses the promise GSAP exposes, so the animation keeps its own onComplete callback.
 const play = (tl: gsap.core.Timeline | gsap.core.Tween) =>
 	tl.then(() => undefined);
-const percent = (v: number) =>
-	new Intl.NumberFormat("fr-FR", {
-		style: "percent",
-		maximumFractionDigits: 0,
-	}).format(v);
+
+/** The page's language, set by the layout on <html lang>. */
+function pageLang(): Lang {
+	return document.documentElement.lang === "en" ? "en" : "fr";
+}
 
 function readProjects(): ProjectCard[] {
 	const node = document.getElementById("brigade-data");
@@ -67,14 +78,31 @@ function typesetStatic(root: HTMLElement) {
 
 export function start() {
 	if (reducedMotion) gsap.globalTimeline.timeScale(3);
+	const lang = pageLang();
+	const t = copy[lang];
+	const percentFormat = new Intl.NumberFormat(intlLocale[lang], {
+		style: "percent",
+		maximumFractionDigits: 0,
+	});
+	const percent = (v: number) => percentFormat.format(v);
 	const projects = readProjects();
 	const bySlug = new Map(projects.map((p) => [p.slug, p]));
 	const stage = element<HTMLDivElement>(".brigade-stage");
-	typesetStatic(stage);
+	if (lang === "fr") typesetStatic(stage);
 	const canvas = element<HTMLCanvasElement>("#brigade-canvas");
 
 	// Renderer, scene, camera.
-	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+	let renderer: THREE.WebGLRenderer;
+	try {
+		renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+	} catch {
+		// No WebGL (old device, disabled GPU): the menu tells the same story in text.
+		const menu = document.querySelector<HTMLAnchorElement>(
+			".intro-text-version a",
+		);
+		if (menu) window.location.replace(menu.href);
+		return;
+	}
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 	renderer.shadowMap.enabled = true;
 	// Hard shadows: they suit the comic style, and soft PCF shadows cost up to 100x more
@@ -91,13 +119,23 @@ export function start() {
 
 	const camera = new THREE.OrthographicCamera();
 	// shift slides the scene sideways, as a fraction of the screen width (positive: to the right).
-	const view = { target: new THREE.Vector3(0, 0.9, 0), zoom: 1, shift: 0 };
+	// direction points from the target to the camera: the usual three-quarter view,
+	// or the street in front of the restaurant during the arrival.
+	const view = {
+		target: new THREE.Vector3(0, 0.9, 0),
+		zoom: 1,
+		shift: 0,
+		direction: REST_DIRECTION.clone(),
+	};
 	const frame = { halfW: 1, halfH: 1, wide: false };
 	const restShift = () => (frame.wide ? 0.1 : 0);
 	const pointer = new THREE.Vector2();
-	const direction = new THREE.Vector3(1, 0.86, 1).normalize();
+	const lookFrom = new THREE.Vector3();
+	// The first visit starts outside, in the street, until the chef's tour is over.
+	let arriving = shouldArrive();
 
-	scene.add(new THREE.HemisphereLight(0xfff4e0, 0x2a3b35, 1.6));
+	const hemi = new THREE.HemisphereLight(0xfff4e0, 0x2a3b35, 1.6);
+	scene.add(hemi);
 	const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
 	sun.position.set(6, 12, 8);
 	sun.castShadow = true;
@@ -132,6 +170,19 @@ export function start() {
 	runner.root.rotation.y = Math.PI * 0.75;
 	scene.add(chef.root, runner.root, cook.root);
 	const cooks = [chef, runner, cook];
+	// The visitor, seated at the chef's table: the whole kitchen works for them.
+	const guest = new Person({
+		look: "recruiter",
+		coat: 0xb07a4f,
+		trousers: 0x3a3f3c,
+		skin: palette.skins[1],
+		hair: 0x2b2118,
+		accent: 0xefe3c4,
+		bag: true,
+	});
+	guest.root.position.copy(CHEF_TABLE);
+	guest.faceTowards(home.chef);
+	scene.add(guest.root);
 	cook.setStirring(true);
 	const sound = new Sound();
 
@@ -151,7 +202,7 @@ export function start() {
 	const say = (who: Cook, text: string, seconds = 1.4) => {
 		const div = bubbles.get(who);
 		if (!div) return;
-		div.textContent = frTypo(text);
+		div.textContent = lang === "fr" ? frTypo(text) : text;
 		div.classList.add("is-visible");
 		gsap.delayedCall(seconds, () => div.classList.remove("is-visible"));
 	};
@@ -165,7 +216,7 @@ export function start() {
 		button.className = "tag";
 		button.innerHTML = `<span class="tag-name"></span><span class="tag-project"></span><span class="tag-score"></span>`;
 		(button.querySelector(".tag-name") as HTMLElement).textContent =
-			runtime.def.name;
+			t.stations[runtime.def.id].name;
 		(button.querySelector(".tag-project") as HTMLElement).textContent =
 			project?.title ?? "";
 		button.addEventListener("click", () => visit(runtime.def.id));
@@ -221,7 +272,7 @@ export function start() {
 	scene.add(plate);
 	const stampDiv = document.createElement("div");
 	stampDiv.className = "stamp";
-	stampDiv.textContent = "Vérifié";
+	stampDiv.textContent = t.stamp;
 	const stamp = new CSS2DObject(stampDiv);
 	stamp.position.copy(kitchen.points.stamp);
 	scene.add(stamp);
@@ -241,7 +292,7 @@ export function start() {
 		frame.halfW = (viewHeight * aspect) / 2;
 		frame.wide = aspect > 1.25;
 		// On wide screens, the kitchen slides right to leave room for the intro.
-		if (visitPanel.hidden) view.shift = restShift();
+		if (visitPanel.hidden && !arriving) view.shift = restShift();
 		applyProjection();
 	};
 	const applyProjection = () => {
@@ -253,7 +304,8 @@ export function start() {
 		camera.top = frame.halfH;
 		camera.bottom = -frame.halfH;
 		camera.near = 0.1;
-		camera.far = 100;
+		// The arrival's backdrop (Fourvière hill) stands far behind the street.
+		camera.far = 200;
 		camera.zoom = view.zoom;
 		camera.updateProjectionMatrix();
 	};
@@ -298,12 +350,13 @@ export function start() {
 		pointerInside = false;
 	});
 	canvas.addEventListener("click", (event) => {
+		if (arriving) return;
 		const id = stationAt(toNdc(event));
 		if (id) visit(id);
 	});
 
 	const updateHover = () => {
-		const id = pointerInside ? stationAt(pointerNdc) : null;
+		const id = pointerInside && !arriving ? stationAt(pointerNdc) : null;
 		if (id === hovered) return;
 		if (hovered) {
 			tags.get(hovered)?.classList.remove("is-hover");
@@ -322,7 +375,8 @@ export function start() {
 		}
 	};
 
-	// Render loop.
+	// Render loop. The prologue hooks its street life into it.
+	const frameHooks = new Set<(delta: number) => void>();
 	const timer = new THREE.Timer();
 	timer.connect(document);
 	let emitAccumulator = 0;
@@ -343,6 +397,8 @@ export function start() {
 		}
 		const delta = Math.min(timer.getDelta(), 0.05);
 		for (const c of cooks) c.update(delta);
+		guest.update(delta);
+		for (const hook of frameHooks) hook(delta);
 		frameCount++;
 		if (frameCount % 4 === 0) updateHover();
 		emitAccumulator += delta * (4 + steam * 26);
@@ -370,7 +426,9 @@ export function start() {
 					-pointer.x * sway,
 				),
 			);
-		camera.position.copy(target).addScaledVector(direction, 30);
+		camera.position
+			.copy(target)
+			.addScaledVector(lookFrom.copy(view.direction).normalize(), 30);
 		camera.lookAt(target);
 		if (camera.zoom !== view.zoom || lastShift !== view.shift) {
 			lastShift = view.shift;
@@ -414,40 +472,91 @@ export function start() {
 		stampDiv.classList.remove("is-visible");
 	};
 
-	const showTicket = (label: string, result: Analysis) => {
+	const ticketList = element<HTMLOListElement>(".ticket-lines");
+	const ticketFoot = element<HTMLElement>(".ticket-foot");
+	const quoted = (text: string) => {
+		const short = text.length > 30 ? `${text.slice(0, 28).trimEnd()}…` : text;
+		return lang === "fr" ? frTypo(`« ${short} »`) : `“${short}”`;
+	};
+	const ticketLine = (className: string, text: string) => {
+		const li = document.createElement("li");
+		li.className = className;
+		li.textContent = text;
+		return li;
+	};
+
+	/** The ticket slides in as soon as the order is sent: the commis is still reading. */
+	const openTicket = (label: string) => {
 		orderNumber++;
-		element<HTMLElement>(".ticket-number").textContent =
-			`Commande n° ${String(orderNumber).padStart(3, "0")}`;
-		element<HTMLElement>(".ticket-title").textContent = label;
-		const list = element<HTMLOListElement>(".ticket-lines");
-		list.replaceChildren(
-			...result.demand.map((d) => {
-				const li = document.createElement("li");
-				const qty = document.createElement("span");
-				qty.textContent = `${d.count} ×`;
-				li.append(
-					qty,
-					` ${competenceById.get(d.competence)?.label.fr ?? d.competence}`,
-				);
-				return li;
-			}),
+		element<HTMLElement>(".ticket-number").textContent = t.ticket.number(
+			String(orderNumber).padStart(3, "0"),
 		);
-		element<HTMLElement>(".ticket-foot").textContent =
-			`${result.words} mots lus, ${result.evidence.length} mentions relevées`;
+		element<HTMLElement>(".ticket-title").textContent = label;
+		ticketList.replaceChildren(ticketLine("is-reading", t.ticket.reading));
+		ticketFoot.textContent = "";
 		ticket.hidden = false;
 		gsap.fromTo(
 			ticket,
 			{ yPercent: -110 },
 			{ yPercent: 0, duration: 0.7, ease: "steps(8)" },
 		);
+	};
+
+	/**
+	 * What the model read is written in blue, like everything a model writes on this site;
+	 * the red ticks of the check come later, at the pass.
+	 */
+	const fillTicket = (order: Order) => {
+		const fromModel = order.source === "model";
+		const lines = order.demand.map((d) => {
+			const li = document.createElement("li");
+			if (fromModel) li.className = "is-model";
+			const qty = document.createElement("span");
+			qty.textContent = t.ticket.quantity(d.count);
+			li.append(
+				qty,
+				` ${competenceById.get(d.competence)?.label[lang] ?? d.competence}`,
+			);
+			if (fromModel) {
+				const tick = document.createElement("b");
+				tick.className = "ticket-tick";
+				tick.textContent = "✓";
+				tick.setAttribute("aria-hidden", "true");
+				li.append(tick);
+			}
+			return li;
+		});
+		// Only checked lines reach the ticket. What the house does not cook is said
+		// under the dish.
+		ticketList.replaceChildren(...lines);
+		ticketFoot.textContent = fromModel
+			? t.ticket.footModel(order.lines)
+			: t.ticket.foot(order.words, order.lines);
 		gsap.fromTo(
-			list.children,
+			ticketList.children,
 			{ opacity: 0 },
-			{ opacity: 1, stagger: 0.08, delay: 0.5 },
+			{ opacity: 1, stagger: 0.08 },
 		);
 	};
 
-	const lightStations = (result: Analysis) => {
+	/** The pass checks the ticket: a red tick per line. */
+	const checkTicket = () => {
+		const tl = gsap.timeline();
+		tl.fromTo(
+			ticketList.querySelectorAll(".ticket-tick"),
+			{ opacity: 0, scale: 2.4 },
+			{
+				opacity: 1,
+				scale: 1,
+				duration: 0.2,
+				stagger: 0.12,
+				ease: "back.out(2)",
+			},
+		);
+		return tl;
+	};
+
+	const lightStations = (result: Order) => {
 		const tl = gsap.timeline();
 		const best = result.matches[0]?.project;
 		for (const [index, match] of result.matches.entries()) {
@@ -496,7 +605,7 @@ export function start() {
 	const stationFor = (slug: string): StationRuntime | undefined =>
 		[...kitchen.stations.values()].find((r) => r.def.slug === slug);
 
-	const showDish = (result: Analysis) => {
+	const showDish = (result: Order) => {
 		const list = element<HTMLOListElement>(".dish-list");
 		list.replaceChildren(
 			...result.matches
@@ -510,7 +619,10 @@ export function start() {
 					const title = document.createElement("strong");
 					title.textContent = bySlug.get(m.project)?.title ?? m.project;
 					const meta = document.createElement("span");
-					meta.textContent = `${runtime?.def.name ?? ""}, ${percent(m.coverage)} de votre commande`;
+					meta.textContent = t.dish.meta(
+						runtime ? t.stations[runtime.def.id].name : "",
+						percent(m.coverage),
+					);
 					button.append(title, meta);
 					if (runtime)
 						button.addEventListener("click", () => visit(runtime.def.id));
@@ -518,6 +630,16 @@ export function start() {
 					return li;
 				}),
 		);
+		// What the offer asks and the house does not cook, said plainly.
+		const missing = [
+			...result.outside.slice(0, 2).map(quoted),
+			...result.uncovered
+				.slice(0, 2)
+				.map((id) => competenceById.get(id)?.label[lang] ?? id),
+		];
+		const outside = element<HTMLElement>(".dish-outside");
+		outside.hidden = missing.length === 0;
+		outside.textContent = `${t.dish.outside} ${missing.join(", ")}`;
 		dishPanel.hidden = false;
 		stage.classList.add("is-served");
 		gsap.fromTo(
@@ -527,37 +649,67 @@ export function start() {
 		);
 	};
 
+	// The first order is told station by station, in kitchen words then AI words.
+	const narration = createNarration(
+		stage,
+		prologueCopy[lang].narration,
+		reducedMotion,
+	);
+	let narrated = false;
+
 	const serve = async (text: string, label: string) => {
 		if (busy) return;
-		ordered = true;
-		const result = analyze(text, projects);
-		if (!result.ok) {
-			writeError.textContent =
-				result.reason === "too-short"
-					? "La commande est trop courte : il faut au moins 20 mots."
-					: "La brigade ne reconnaît aucun ingrédient dans cette commande. Collez la description du poste.";
+		if (countWords(text) < MIN_WORDS) {
+			writeError.textContent = t.write.tooShort;
 			return;
 		}
+		ordered = true;
+		// The commis (a language model) starts reading now; the kitchen gets going meanwhile.
+		const reading = readOffer(text, projects);
 		writeDialog.close();
 		setBusy(true);
 		leave();
 		resetStations();
 		dishPanel.hidden = true;
 		stage.classList.remove("is-served");
-		showTicket(label, result);
+		openTicket(label);
 
 		await wait(0.8);
 		chef.faceTowards(runner.root.position);
-		say(chef, "Ça marche !");
+		say(chef, t.bubbles.coming);
 		chef.hop();
 		await wait(0.7);
-		say(runner, "Oui chef !");
-		say(cook, "Oui chef !");
+		say(runner, t.bubbles.yes);
+		say(cook, t.bubbles.yes);
 		runner.hop();
 		cook.hop();
-		await wait(0.6);
+		const outcome = await reading;
+		if (!outcome.ok) {
+			ticketList.replaceChildren(ticketLine("is-sent-back", t.write.noSkill));
+			say(chef, t.bubbles.nothing, 2);
+			setBusy(false);
+			return;
+		}
+		const result = outcome.order;
+		const source = result.source;
+		fillTicket(result);
+		const narrate = !narrated;
+		narrated = true;
+		if (narrate) narration.show(0, source);
+		// The first time, the kitchen leaves a moment to read the subtitles.
+		await wait(narrate ? 1.6 : 0.6);
+
+		// The check: every line the model wrote must quote the offer, or it goes back.
+		if (source === "model") {
+			if (narrate) narration.show(1, source);
+			chef.faceTowards(kitchen.points.plate);
+			await play(checkTicket());
+			sound.stamp();
+			await wait(narrate ? 1.6 : 0.4);
+		}
 
 		// Retrieval: the runner fetches one jar per skill found in the order.
+		if (narrate && source === "lexicon") narration.show(1, source);
 		follow(kitchen.points.pantry);
 		await play(
 			runner.walk([new THREE.Vector3(-3.4, 0, -3.3), kitchen.points.pantry]),
@@ -613,9 +765,10 @@ export function start() {
 			steam = heat.v;
 		};
 		gsap.to(heat, { v: 1, duration: 0.3, onUpdate: syncSteam });
-		say(cook, "Ça chauffe !");
+		say(cook, t.bubbles.heat);
 		sound.sizzle();
 		if (!frame.wide) resetCamera();
+		if (narrate) narration.show(2, source);
 		await play(lightStations(result));
 		gsap.to(heat, { v: 0.25, duration: 1.2, onUpdate: syncSteam });
 
@@ -654,15 +807,17 @@ export function start() {
 
 		// The check: the chef inspects, stamps, rings the bell.
 		chef.faceTowards(kitchen.points.plate);
+		if (narrate) narration.show(3, source);
 		await play(chef.inspect());
 		stampDiv.classList.add("is-visible");
 		sound.stamp();
 		gsap.delayedCall(0.25, () => sound.bell());
-		say(chef, "Service !");
+		say(chef, t.bubbles.service);
 		chef.hop();
 		await wait(0.6);
 		showDish(result);
 		sound.good();
+		if (narrate) narration.hide(8);
 
 		// Back to positions.
 		void play(cook.walk([new THREE.Vector3(0.9, 0, -1.2), home.cook])).then(
@@ -732,18 +887,17 @@ export function start() {
 		if (!runtime || !rushPanel.hidden || !gamePanel.hidden) return;
 		visiting = id;
 		const project = bySlug.get(runtime.def.slug);
-		element<HTMLElement>(".visit-name").textContent = runtime.def.name;
+		element<HTMLElement>(".visit-name").textContent = t.stations[id].name;
 		element<HTMLElement>(".visit-project").textContent = project
 			? `${project.title}, ${project.org}`
 			: "";
-		element<HTMLElement>(".visit-concept").textContent = runtime.def.concept;
+		element<HTMLElement>(".visit-concept").textContent = t.stations[id].concept;
 		element<HTMLElement>(".visit-summary").textContent = project?.summary ?? "";
 		const link = element<HTMLAnchorElement>(".visit-play");
 		const rushButton = element<HTMLButtonElement>(".visit-rush");
 		const soon = element<HTMLElement>(".visit-soon");
 		const playable = id === "pass" || id in games;
-		rushButton.textContent =
-			id === "pass" ? "Prendre le passe" : "Jouer à ce poste";
+		rushButton.textContent = id === "pass" ? t.visit.takePass : t.visit.play;
 		link.hidden = !project?.href;
 		rushButton.hidden = !playable;
 		soon.hidden = playable;
@@ -776,8 +930,10 @@ export function start() {
 	const choiceButtons = [
 		...document.querySelectorAll<HTMLButtonElement>("[data-choice]"),
 	];
-	const msFormat = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
-	const euros = new Intl.NumberFormat("fr-FR", {
+	const msFormat = new Intl.NumberFormat(intlLocale[lang], {
+		maximumFractionDigits: 2,
+	});
+	const euros = new Intl.NumberFormat(intlLocale[lang], {
 		style: "currency",
 		currency: "EUR",
 		maximumFractionDigits: 0,
@@ -789,24 +945,17 @@ export function start() {
 	let answered = false;
 	let countdown: gsap.core.Tween | null = null;
 
-	const pieceNames: Record<PieceId, string> = {
-		declaration: "Déclaration de sinistre",
-		photos: "Photos des dégâts",
-		quote: "Devis de réparation",
-		statement: "Attestation du voisin",
-	};
-	const stampText: Record<Outcome, string> = {
-		offer: "Indemnisé",
-		missing: "Pièce réclamée",
-		escalation: "Transmis",
-	};
+	const pieceNames: Record<PieceId, string> = t.rush.pieces;
+	const stampText: Record<Outcome, string> = t.rush.stamps;
 
 	const renderCase = (index: number) => {
 		const rushCase = deck[index];
 		const days = rushCase.file.delayDays;
-		element<HTMLElement>(".rush-progress").textContent =
-			`Dossier ${index + 1} sur ${deck.length}`;
-		element<HTMLElement>(".rush-story").textContent = rushCase.story;
+		element<HTMLElement>(".rush-progress").textContent = t.rush.progress(
+			index + 1,
+			deck.length,
+		);
+		element<HTMLElement>(".rush-story").textContent = rushCase.story[lang];
 		element<HTMLUListElement>(".rush-pieces").replaceChildren(
 			...(Object.keys(pieceNames) as PieceId[]).map((piece) => {
 				const li = document.createElement("li");
@@ -816,12 +965,11 @@ export function start() {
 				return li;
 			}),
 		);
-		element<HTMLElement>(".rush-delay").textContent =
-			`${days} jour${days > 1 ? "s" : ""}`;
+		element<HTMLElement>(".rush-delay").textContent = t.rush.days(days);
 		element<HTMLElement>(".rush-amount").textContent =
 			rushCase.file.pieces.includes("quote")
 				? euros.format(rushCase.file.quoteAmount)
-				: "non reçu";
+				: t.rush.notReceived;
 	};
 
 	const nextRound = () => {
@@ -860,7 +1008,7 @@ export function start() {
 		answered = true;
 		countdown?.kill();
 		const rushCase = deck[roundIndex];
-		const verdict = judge(rushCase.file);
+		const verdict = judge(rushCase.file, lang);
 		const seconds = (performance.now() - roundStart) / 1000;
 		rounds.push({ rushCase, choice, verdict, seconds });
 		const right = choice === verdict.outcome;
@@ -869,53 +1017,55 @@ export function start() {
 		rushStamp.textContent = stampText[verdict.outcome];
 		rushStamp.classList.add("is-visible");
 		sound.stamp();
-		element<HTMLElement>(".rush-verdict-head").textContent = frTypo(
-			right
-				? "Bien vu : même décision que le chef."
-				: choice === null
-					? "Trop tard : le chef a tranché sans vous."
-					: "Pas tout à fait.",
-		);
+		element<HTMLElement>(".rush-verdict-head").textContent = right
+			? t.rush.verdict.right
+			: choice === null
+				? t.rush.verdict.late
+				: t.rush.verdict.wrong;
 		rushVerdict.dataset.right = String(right);
-		element<HTMLElement>(".rush-verdict-chef").textContent = frTypo(
-			`Le chef : ${outcomeLabel[verdict.outcome].toLowerCase()}, en ${msFormat.format(verdict.ms)} ms.`,
-		);
+		element<HTMLElement>(".rush-verdict-chef").textContent =
+			t.rush.verdict.chef(
+				t.rush.outcomes[verdict.outcome].toLowerCase(),
+				msFormat.format(verdict.ms),
+			);
 		element<HTMLUListElement>(".rush-reasons").replaceChildren(
 			...verdict.reasons.map((reason) => {
 				const li = document.createElement("li");
-				li.textContent = frTypo(reason);
+				li.textContent = lang === "fr" ? frTypo(reason) : reason;
 				return li;
 			}),
 		);
 		rushNext.textContent =
-			roundIndex + 1 >= deck.length ? "Voir le résultat" : "Dossier suivant";
+			roundIndex + 1 >= deck.length ? t.rush.result : t.rush.next;
 		rushVerdict.hidden = false;
 		rushNext.focus({ preventScroll: true });
 
 		if (right) {
 			chef.hop();
-			say(chef, "Bien vu !");
+			say(chef, t.bubbles.right);
 			sound.good();
 		} else {
-			say(chef, verdict.reasons[0] ?? "Non !", 2.2);
+			say(chef, verdict.reasons[0] ?? t.bubbles.wrong, 2.2);
 			sound.bad();
 		}
 	};
 
 	const endRush = () => {
 		const result = score(rounds);
-		const plural = result.right > 1 ? "s" : "";
 		rushPlay.hidden = true;
 		rushEnd.hidden = false;
 		element<HTMLElement>(".rush-progress").textContent = "";
-		element<HTMLElement>(".rush-score").textContent = frTypo(
-			`Vous : ${result.right} bonne${plural} décision${plural} sur ${result.total}, en ${Math.round(result.playerSeconds)} s.`,
+		element<HTMLElement>(".rush-score").textContent = t.rush.score(
+			result.right,
+			result.total,
+			Math.round(result.playerSeconds),
 		);
-		element<HTMLElement>(".rush-chef").textContent = frTypo(
-			`Le chef, c'est-à-dire l'agent : ${result.total} sur ${result.total}, en ${msFormat.format(result.chefMs)} ms au total, avec la raison de chaque décision. C'est tout l'intérêt d'un agent auditable : il applique le règlement à chaque fois, et il dit pourquoi.`,
+		element<HTMLElement>(".rush-chef").textContent = t.rush.chefScore(
+			result.total,
+			msFormat.format(result.chefMs),
 		);
 		chef.hop();
-		say(chef, "Service terminé !", 2);
+		say(chef, t.bubbles.rushEnd, 2);
 		sound.bell();
 		element<HTMLButtonElement>(".rush-again").focus({ preventScroll: true });
 	};
@@ -933,7 +1083,7 @@ export function start() {
 		rushPanel.hidden = false;
 		rushPlay.hidden = false;
 		rushEnd.hidden = true;
-		say(chef, "À vous le passe !", 1.6);
+		say(chef, t.bubbles.rushStart, 1.6);
 		nextRound();
 	};
 
@@ -967,11 +1117,12 @@ export function start() {
 		stage.classList.add("is-rushing");
 		focusStation(id, "wide");
 		const { game } = await load();
-		element<HTMLElement>(".game-title").textContent = frTypo(game.title);
-		element<HTMLElement>(".game-intro").textContent = frTypo(game.intro);
+		element<HTMLElement>(".game-title").textContent = game.title[lang];
+		element<HTMLElement>(".game-intro").textContent = game.intro[lang];
 		gameBody.replaceChildren();
 		gamePanel.hidden = false;
 		gameCleanup = game.mount(gameBody, {
+			lang,
 			sound,
 			say: (text) => say(chef, text, 2),
 			close: closeGame,
@@ -1020,9 +1171,7 @@ export function start() {
 		if (sound.enabled) sound.disable();
 		else sound.enable();
 		soundToggle.setAttribute("aria-pressed", String(sound.enabled));
-		soundToggle.textContent = sound.enabled
-			? "Couper le son"
-			: "Activer le son";
+		soundToggle.textContent = sound.enabled ? t.sound.disable : t.sound.enable;
 		if (sound.enabled) sound.bell();
 	});
 
@@ -1036,17 +1185,16 @@ export function start() {
 			rushPanel.hidden &&
 			gamePanel.hidden
 		) {
-			say(chef, "Une commande ?", 1.8);
+			say(chef, t.bubbles.invite, 1.8);
 			chef.hop();
 		}
 		if (!ordered) gsap.delayedCall(9, invite);
 	};
-	gsap.delayedCall(3, invite);
 
 	for (const button of orderButtons) {
 		button.addEventListener("click", () => {
 			const preset = presets.find((p) => p.id === button.dataset.order);
-			if (preset) void serve(preset.text.fr, preset.label.fr);
+			if (preset) void serve(preset.text[lang], preset.label[lang]);
 		});
 	}
 	element<HTMLButtonElement>(".order-write").addEventListener("click", () => {
@@ -1059,10 +1207,81 @@ export function start() {
 		(event) => {
 			event.preventDefault();
 			const words = writeText.value.trim().split(/\s+/).length;
-			void serve(writeText.value, `Votre offre (${words} mots)`);
+			void serve(writeText.value, t.write.ticketTitle(words));
 		},
 	);
 	element<HTMLButtonElement>(".write-cancel").addEventListener("click", () =>
 		writeDialog.close(),
 	);
+
+	// The tour points at stations: their rings light up one after the other.
+	const spotlight = (ids: StationId[]) => {
+		let delay = 0;
+		for (const runtime of kitchen.stations.values()) {
+			const on = ids.includes(runtime.def.id);
+			tags.get(runtime.def.id)?.classList.toggle("is-lit", on);
+			if (on) lit.add(runtime.def.id);
+			else lit.delete(runtime.def.id);
+			gsap.to(runtime.ring.material, {
+				opacity: on ? 0.4 : 0,
+				duration: 0.4,
+				delay: on ? delay : 0,
+			});
+			if (on) {
+				gsap.fromTo(
+					runtime.ring.scale,
+					{ x: 0.3, y: 0.3 },
+					{ x: 1, y: 1, duration: 0.6, delay, ease: "back.out(2)" },
+				);
+				delay += 0.15;
+			}
+		}
+	};
+
+	// The arrival comes last, so the very first frame already shows the street.
+	const screenPoint = new THREE.Vector3();
+	const opening = arriving
+		? arrive(
+				{
+					scene,
+					camera,
+					canvas,
+					stage,
+					view,
+					frame,
+					hemi,
+					sun,
+					sound,
+					brigade: { chef, runner, cook },
+					guest,
+					onFrame: (hook) => {
+						frameHooks.add(hook);
+						return () => frameHooks.delete(hook);
+					},
+					say,
+					spotlight,
+					rest: () => ({
+						target: new THREE.Vector3(0, 0.9, 0),
+						zoom: 1,
+						shift: restShift(),
+						direction: REST_DIRECTION.clone(),
+					}),
+					toScreen: (point) => {
+						screenPoint.copy(point).project(camera);
+						return {
+							x: ((screenPoint.x + 1) / 2) * stage.clientWidth,
+							y: ((1 - screenPoint.y) / 2) * stage.clientHeight,
+						};
+					},
+					reducedMotion,
+				},
+				prologueCopy[lang],
+			)
+		: Promise.resolve();
+	// After the tour the chef has just asked for an order: the next invitation can wait.
+	const firstVisit = arriving;
+	void opening.then(() => {
+		arriving = false;
+		gsap.delayedCall(firstVisit ? 9 : 3, invite);
+	});
 }
