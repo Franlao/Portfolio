@@ -122,7 +122,11 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		// refused key (401) from a busy model (429) in the logs.
 		// Mistral's error explains a 429: rate limit, exhausted quota or model capacity.
 		const reason = (await response.text().catch(() => "")).slice(0, 240);
-		console.warn(`read-offer: Mistral answered ${response.status} ${reason}`);
+		// Which key was refused, without revealing it: the first characters of its hash.
+		const keyId = (await fingerprint(apiKey)).slice(0, 8);
+		console.warn(
+			`read-offer: Mistral answered ${response.status} ${reason} (key ${keyId})`,
+		);
 		return json(502, { error: "model" });
 	}
 
