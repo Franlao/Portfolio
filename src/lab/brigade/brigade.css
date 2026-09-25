@@ -624,6 +624,36 @@
 	.tag-project {
 		display: none;
 	}
+
+	/* The name and the links stay legible when the camera comes close: the night fades in
+	   behind them. */
+	.intro::before {
+		content: "";
+		position: absolute;
+		inset: -14px -16px -18px;
+		z-index: -1;
+		background: linear-gradient(var(--night) 62%, transparent);
+		pointer-events: none;
+	}
+
+	/* On a narrow ticket, the stamp leaves the story its width. */
+	.rush-story {
+		padding-top: 2.7rem;
+	}
+}
+
+.dish-close {
+	float: right;
+	margin: -0.2rem -0.3rem 0.4rem 0.8rem;
+	padding: 0.3rem 0.6rem;
+	font: inherit;
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: none;
+	border: 1.5px solid var(--ink);
+	border-radius: 999px;
+	cursor: pointer;
 }
 
 .is-visiting .ticket,
@@ -748,6 +778,7 @@
 	width: min(46rem, calc(100% - 48px));
 	padding: 1rem 1.2rem 1.2rem;
 	overflow-y: auto;
+	overflow-x: hidden;
 	color: var(--ink);
 	background: var(--paper);
 	border: 2px solid var(--ink);
@@ -1135,6 +1166,8 @@
 	max-height: calc(100% - 94px);
 	padding: 1rem 1.2rem 1.2rem;
 	overflow-y: auto;
+	/* A stamp mid-animation or a wide figure never pans the game sideways on a phone. */
+	overflow-x: hidden;
 	color: var(--ink);
 	background: var(--paper);
 	border: 2px solid var(--ink);
@@ -1551,6 +1584,19 @@
 
 	/* Each order card already says « Commande »: the heading gives its room to the ticket. */
 	.orders-title {
+		display: none;
+	}
+
+	/* Station names only: the project titles would pile up on a short screen. */
+	.tag-project {
+		display: none;
+	}
+
+	.tag {
+		font-size: 0.68rem;
+	}
+
+	.intro-text-version {
 		display: none;
 	}
 

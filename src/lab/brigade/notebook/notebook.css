@@ -701,7 +701,7 @@
 	}
 
 	.notebook-left {
-		padding-top: 2rem;
+		padding-top: 1.1rem;
 		border-bottom: 2px dashed rgb(27 30 28 / 0.45);
 	}
 
@@ -726,9 +726,16 @@
 		flex: 0 0 78%;
 	}
 
+	/* The close button sits above the notebook, on the backdrop: never over its lines. */
+	.notebook-book {
+		padding-top: 46px;
+	}
+
 	.notebook-close {
-		top: 8px;
-		right: 8px;
+		top: 2px;
+		right: 2px;
+		padding: 0.35rem 0.8rem;
+		font-size: 0.8rem;
 	}
 }
 

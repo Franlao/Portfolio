@@ -71,6 +71,7 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 
 		<!-- Focused when served (main.ts), so it is announced once rather than as a live region. -->
 		<section class="dish panel" hidden tabindex="-1" aria-labelledby="dish-title">
+			<button type="button" class="dish-close">{t.dish.close}</button>
 			<h2 id="dish-title">{t.dish.title}</h2>
 			<p>{t.dish.intro}</p>
 			<ol class="dish-list"></ol>

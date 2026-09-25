@@ -62,6 +62,8 @@ interface BrigadeCopy {
 		meta: (station: string, share: string) => string;
 		/** Followed by what the offer asks and the house does not cook. */
 		outside: string;
+		/** Puts the dish away, to reach the stations under it. */
+		close: string;
 	};
 	/** The bill: what the visitor tasted, and how to reach the chef. */
 	bill: {
@@ -204,6 +206,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			note: "Choisissez un plat pour visiter son poste.",
 			meta: (station, share) => `${station}, ${share} de votre commande`,
 			outside: "Pas au menu :",
+			close: "Ranger le plat",
 		},
 		bill: {
 			open: "L'addition",
@@ -399,6 +402,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			note: "Pick a dish to visit its station.",
 			meta: (station, share) => `${station}, ${share} of your order`,
 			outside: "Not on the menu:",
+			close: "Put the dish away",
 		},
 		bill: {
 			open: "The bill",

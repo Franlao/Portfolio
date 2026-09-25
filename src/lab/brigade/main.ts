@@ -47,6 +47,11 @@ const FOOD: Record<StationId, number> = {
 
 /** The usual three-quarter view of the kitchen, from the front right corner. */
 const REST_DIRECTION = new THREE.Vector3(1, 0.86, 1).normalize();
+/**
+ * On a phone held upright the camera looks down more steeply: the floor unfolds and
+ * fills the height, instead of a thin diorama between two empty bands.
+ */
+const PORTRAIT_DIRECTION = new THREE.Vector3(1, 1.7, 1).normalize();
 
 const reducedMotion = window.matchMedia(
 	"(prefers-reduced-motion: reduce)",
@@ -142,7 +147,9 @@ export function start() {
 		shift: 0,
 		direction: REST_DIRECTION.clone(),
 	};
-	const frame = { halfW: 1, halfH: 1, wide: false };
+	const frame = { halfW: 1, halfH: 1, wide: false, portrait: false };
+	const restDirection = () =>
+		frame.portrait ? PORTRAIT_DIRECTION : REST_DIRECTION;
 	const restShift = () => (frame.wide ? 0.1 : 0);
 	const pointer = new THREE.Vector2();
 	const lookFrom = new THREE.Vector3();
@@ -350,6 +357,9 @@ export function start() {
 		frame.halfH = viewHeight / 2;
 		frame.halfW = (viewHeight * aspect) / 2;
 		frame.wide = aspect > 1.25;
+		frame.portrait = aspect < 0.8;
+		// The arrival sets its own camera: the kitchen's comes once everyone is inside.
+		if (!arriving) view.direction.copy(restDirection());
 		// On wide screens, the kitchen slides right to leave room for the intro.
 		if (visitPanel.hidden && !arriving) view.shift = restShift();
 		applyProjection();
@@ -502,7 +512,31 @@ export function start() {
 		}
 		renderer.render(scene, camera);
 		labels.render(scene, camera);
+		keepTagsInside();
 	});
+
+	// On a narrow screen, a station tag at the edge of the diorama slides back inside the
+	// screen instead of being cut. The CSS translate adds to the renderer's transform.
+	const keepTagsInside = () => {
+		const margin = 6;
+		const width = stage.clientWidth;
+		const narrow = width < 761;
+		for (const tag of tags.values()) {
+			const shift = Number(tag.dataset.shift ?? 0);
+			let next = 0;
+			if (narrow && tag.offsetParent) {
+				const rect = tag.getBoundingClientRect();
+				const left = rect.left - shift;
+				const right = rect.right - shift;
+				if (left < margin) next = margin - left;
+				else if (right > width - margin) next = width - margin - right;
+			}
+			if (Math.abs(next - shift) > 0.5) {
+				tag.style.translate = next ? `${Math.round(next)}px 0` : "";
+				tag.dataset.shift = String(next);
+			}
+		}
+	};
 
 	// Overlay UI.
 	const ticket = element<HTMLElement>(".ticket");
@@ -510,6 +544,12 @@ export function start() {
 	const orderButtons = [
 		...document.querySelectorAll<HTMLButtonElement>("[data-order]"),
 	];
+	// Put away, the dish leaves the stations under it within reach, on a phone above all.
+	element<HTMLButtonElement>(".dish-close").addEventListener("click", () => {
+		dishPanel.hidden = true;
+		stage.classList.remove("is-served");
+		orderButtons[0]?.focus({ preventScroll: true });
+	});
 	const writeDialog = element<HTMLDialogElement>(".write");
 	const writeText = element<HTMLTextAreaElement>(".write textarea");
 	const writeError = element<HTMLElement>(".write-error");
@@ -1319,6 +1359,11 @@ export function start() {
 			roundIndex + 1 >= deck.length ? t.rush.result : t.rush.next;
 		rushVerdict.hidden = false;
 		rushNext.focus({ preventScroll: true });
+		// On a phone the verdict opens below the fold: the next step comes into sight.
+		rushNext.scrollIntoView({
+			block: "nearest",
+			behavior: reducedMotion ? "auto" : "smooth",
+		});
 
 		if (right) {
 			chef.hop();
@@ -1596,7 +1641,7 @@ export function start() {
 						target: new THREE.Vector3(0, 0.9, 0),
 						zoom: 1,
 						shift: restShift(),
-						direction: REST_DIRECTION.clone(),
+						direction: restDirection().clone(),
 					}),
 					toScreen: (point) => {
 						screenPoint.copy(point).project(camera);

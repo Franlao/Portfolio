@@ -511,11 +511,43 @@
 		border-radius: 16px 16px 0 0;
 	}
 
+	/* A compact phone: the street, the taxi and the welcome play above it. */
 	.phone-thread {
-		max-height: 34vh;
+		max-height: 24vh;
 		overflow-x: hidden;
 		overflow-y: auto;
 		scrollbar-width: thin;
+	}
+
+	.phone-head {
+		padding-block: 0.45rem;
+	}
+
+	.phone-avatar {
+		width: 1.9rem;
+		height: 1.9rem;
+	}
+
+	/* Once the taxi is here, only its message is left: the phone gives the scene its room. */
+	.arrival.is-here .msg-booking,
+	.arrival.is-here .msg-house {
+		display: none;
+	}
+
+	.phone-replies {
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.5rem 0.6rem;
+		padding: 0.6rem 0.75rem 0.7rem;
+	}
+
+	.arrival-enter {
+		padding: 0.55rem 1rem;
+		font-size: 1rem;
+	}
+
+	.arrival-menu {
+		grid-column: 1 / -1;
 	}
 
 	.msg-greeting {
@@ -537,6 +569,13 @@
 
 	.tour::after {
 		display: none;
+	}
+}
+
+@keyframes arrival-in-side {
+	from {
+		opacity: 0;
+		transform: translateX(-30px);
 	}
 }
 
@@ -702,6 +741,47 @@
 
 	.is-served .narration {
 		display: none;
+	}
+
+	/* A phone held sideways: the whole phone fits the height, its buttons always in sight. */
+	.arrival {
+		top: 12px;
+		bottom: 12px;
+		transform: none;
+		animation-name: arrival-in-side;
+	}
+
+	.phone {
+		display: flex;
+		flex-direction: column;
+		max-height: 100%;
+	}
+
+	.phone-bar {
+		display: none;
+	}
+
+	.phone-thread {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		scrollbar-width: thin;
+	}
+
+	.arrival.is-here .msg-booking,
+	.arrival.is-here .msg-house {
+		display: none;
+	}
+
+	.phone-replies {
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.4rem 0.6rem;
+		padding: 0.5rem 0.75rem 0.6rem;
+	}
+
+	.arrival-menu {
+		grid-column: 1 / -1;
 	}
 
 	/* The chef's balloon sits in the right column instead of following the chef. */

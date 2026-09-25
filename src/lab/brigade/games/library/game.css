@@ -2,6 +2,8 @@
 
 .g-library {
 	display: grid;
+	/* One column that never grows past the panel, whatever a page or a figure asks. */
+	grid-template-columns: minmax(0, 1fr);
 	gap: 0.9rem;
 	font-size: 0.95rem;
 	line-height: 1.45;
@@ -106,6 +108,7 @@
 
 .g-library-play {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 0.9rem;
 }
 
@@ -362,6 +365,7 @@
 
 .g-library-claims {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 0.6rem;
 	margin: 0;
 	padding: 0;

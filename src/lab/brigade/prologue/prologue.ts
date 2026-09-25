@@ -195,8 +195,8 @@ export async function arrive(
 	const framing = hand.frame.wide
 		? // The phone sits on the left: the house stands on the right.
 			{ target: new THREE.Vector3(0.6, 3.2, 5.8), zoom: 0.86, shift: 0.15 }
-		: // On a phone the conversation is a bottom sheet: the house fills the top half.
-			{ target: new THREE.Vector3(1.0, -1.2, 5.8), zoom: 1.6, shift: 0 };
+		: // On a phone the conversation is a bottom sheet: the street plays above it.
+			{ target: new THREE.Vector3(1.0, -2.6, 5.8), zoom: 1.45, shift: 0 };
 	view.direction.copy(FRONT);
 	view.target.copy(framing.target);
 	view.zoom = framing.zoom;
@@ -335,7 +335,7 @@ export async function arrive(
 		// The camera comes closer, as in a film: the welcome is the moment to watch.
 		const close = hand.frame.wide
 			? { x: 0.4, y: 2.2, z: 6.6, zoom: 1.2 }
-			: { x: 0.8, y: -0.2, z: 6.6, zoom: 2.1 };
+			: { x: 0.8, y: -1.5, z: 6.6, zoom: 1.95 };
 		gsap.to(view.target, {
 			x: close.x,
 			y: close.y,
