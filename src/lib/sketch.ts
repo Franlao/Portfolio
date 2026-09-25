@@ -75,3 +75,19 @@ export function sketchWave(width: number, seed: number): string[] {
 	}
 	return toPaths(generator.curve(points, { ...base, seed, roughness: 1.3 }));
 }
+
+/** A loose ellipse around a word, as a pencil circles it. */
+export function sketchEllipse(
+	width: number,
+	height: number,
+	seed: number,
+): string[] {
+	return toPaths(
+		generator.ellipse(width / 2, height / 2, width - 4, height - 4, {
+			...base,
+			seed,
+			roughness: 1.6,
+			strokeWidth: 1.6,
+		}),
+	);
+}

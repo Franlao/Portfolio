@@ -1,5 +1,6 @@
 ---
 import type { Lang } from "../../i18n/ui";
+import { copy } from "../../lab/brigade/copy";
 import { prologueCopy } from "../../lab/brigade/prologue/copy";
 import "../../lab/brigade/prologue/prologue.css";
 
@@ -21,7 +22,8 @@ const phone = prologueCopy[lang].phone;
 			arrived = localStorage.getItem("brigade.arrived") === "1";
 		} catch {}
 		const query = location.search;
-		const skip = /[?&](cuisine|kitchen)\b/.test(query);
+		// Back from a page of the chef's notebook (?carnet): straight into the kitchen.
+		const skip = /[?&](cuisine|kitchen|carnet)\b/.test(query);
 		const replay = /[?&](arrivee|arrival)\b/.test(query);
 		if (replay || (!arrived && !skip)) {
 			document.documentElement.classList.add("brigade-arriving");
@@ -70,6 +72,7 @@ const phone = prologueCopy[lang].phone;
 		</ol>
 		<div class="phone-replies">
 			<button type="button" class="arrival-enter">{phone.enter}</button>
+			<button type="button" class="arrival-sound" aria-pressed="false">{copy[lang].sound.enable}</button>
 			<a class="arrival-menu" href={menuHref}>{phone.menu}</a>
 		</div>
 	</div>

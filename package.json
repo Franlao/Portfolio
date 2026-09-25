@@ -13,7 +13,8 @@
 		"check": "astro check && biome check .",
 		"lint": "biome check .",
 		"format": "biome check --write .",
-		"test": "vitest run"
+		"test": "vitest run",
+		"voices": "node --env-file-if-exists=.env scripts/voices.mjs"
 	},
 	"dependencies": {
 		"@astrojs/markdown-satteri": "^0.4.2",

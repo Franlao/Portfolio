@@ -16,6 +16,8 @@ Le jeu du passe (`src/lab/brigade/rush.ts` + la section `.rush` de `src/componen
 
 `context` fournit : `lang` (`"fr"` ou `"en"`), `sound` (`pop`, `good`, `bad`, `stamp`, `bell`, sans effet si le son est coupé), `say(texte)` (une bulle au-dessus du chef, moins de 30 caractères), `close()` (retour à la cuisine) et `reducedMotion`.
 
+ Les répliques du chef rangées dans `copy.ts` sous une clé `chef`, `say` ou `shout…` sont enregistrées en voix par `npm run voices`, et dites quand le son est activé. Une réplique construite par une fonction (un score, une lettre) reste une bulle muette.
+
 ## Technique
 
 - DOM en TypeScript simple : ni React ni Three.js. GSAP est disponible (`import gsap from "gsap"`). Aucune nouvelle dépendance.

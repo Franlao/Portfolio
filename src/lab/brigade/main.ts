@@ -16,19 +16,25 @@ import type { Order } from "../../lib/offer/reader";
 import { readOffer } from "../../lib/offer/remote";
 import type { ProjectCard } from "../../lib/projects";
 import { frTypo } from "../../lib/typo";
-import { Bill } from "./bill";
+import { readVisit, saveVisit } from "../../lib/visit";
+import { Bill, type Tasting } from "./bill";
 import { Cook, crate } from "./cook";
 import { copy, intlLocale } from "./copy";
 import { games } from "./games";
 import { buildKitchen, type StationRuntime } from "./kitchen";
+import type { Notebook, NotebookRound } from "./notebook/notebook";
 import { prologueCopy } from "./prologue/copy";
 import { createNarration } from "./prologue/narration";
 import { Person } from "./prologue/people";
 import { arrive, CHEF_TABLE, shouldArrive } from "./prologue/prologue";
-import { deal, judge, type Round, score } from "./rush";
+import { deal, judge, type Round, rushCases, score } from "./rush";
 import { Sound } from "./sound";
 import type { StationId } from "./stations";
 import { outline, palette, toon } from "./toon";
+import { announcement } from "./voice/announce";
+import { voiceCopy } from "./voice/copy";
+import { type Speaker, STREET_VOICES } from "./voice/speakers";
+import { Voices } from "./voice/voices";
 
 const FOOD: Record<StationId, number> = {
 	pass: palette.check,
@@ -194,6 +200,19 @@ export function start() {
 	scene.add(guest.root);
 	cook.setStirring(true);
 	const sound = new Sound();
+	const voiceText = voiceCopy[lang];
+	// The camera is the visitor's ears: each voice comes from where its character stands on screen.
+	const ear = new THREE.Vector3();
+	const voices = new Voices(
+		sound,
+		lang,
+		(point) => ear.copy(point).project(camera).x,
+	);
+	const speakerOf = new Map<Cook, Speaker>([
+		[chef, "chef"],
+		[runner, "runner"],
+		[cook, "cook"],
+	]);
 
 	const bubble = (cookObj: Cook) => {
 		const div = document.createElement("div");
@@ -210,14 +229,40 @@ export function start() {
 		[runner, bubble(runner)],
 		[cook, bubble(cook)],
 	]);
-	const say = (who: Cook, text: string, seconds = 1.4) => {
+	const hides = new Map<HTMLDivElement, gsap.core.Tween>();
+	/** Shows a bubble for a few seconds. A voiced bubble stays as long as the voice, and shows it. */
+	const bubbleSay = (
+		who: Cook,
+		text: string,
+		seconds: number,
+		voiced = false,
+	) => {
 		const div = bubbles.get(who);
 		if (!div) return;
 		div.textContent = lang === "fr" ? frTypo(text) : text;
 		div.classList.add("is-visible");
-		gsap.delayedCall(realSeconds(seconds), () =>
-			div.classList.remove("is-visible"),
+		div.classList.toggle("is-voiced", voiced);
+		hides.get(div)?.kill();
+		hides.set(
+			div,
+			gsap.delayedCall(realSeconds(seconds), () =>
+				div.classList.remove("is-visible", "is-voiced"),
+			),
 		);
+	};
+	/**
+	 * A character speaks: the bubble always, the voice too once the sound is on. Resolves
+	 * when the voice has finished, with false if it stayed silent.
+	 */
+	const say = (who: Cook, text: string, seconds = 1.4): Promise<boolean> => {
+		bubbleSay(who, text, seconds);
+		const speaker = speakerOf.get(who);
+		if (!speaker) return Promise.resolve(false);
+		return voices.say(speaker, text, {
+			from: who.root,
+			onStart: (clip) =>
+				bubbleSay(who, text, Math.max(seconds, clip.seconds + 0.3), true),
+		});
 	};
 
 	// Station tags: real buttons, so the stations can be visited with a keyboard.
@@ -411,6 +456,13 @@ export function start() {
 		}
 		const delta = Math.min(timer.getDelta(), 0.05);
 		for (const c of cooks) c.update(delta);
+		// Voices follow their characters; mouths and balloons follow the voices.
+		voices.update();
+		for (const c of cooks) {
+			const level = voices.level(speakerOf.get(c) as Speaker);
+			c.talk(level);
+			bubbles.get(c)?.style.setProperty("--voice", level.toFixed(2));
+		}
 		guest.update(delta);
 		for (const hook of frameHooks) hook(delta);
 		frameCount++;
@@ -681,7 +733,52 @@ export function start() {
 		stage,
 		prologueCopy[lang].narration,
 		reducedMotion,
+		// The chef leans towards the visitor at his table: an aside, close and dry.
+		(text, onStart) =>
+			voices.say("chef", text, { from: chef.root, plan: "aside", onStart }),
+		voiceText.spoken.narration,
 	);
+	// The kitchen's lines, fetched as soon as the sound is on.
+	voices.preload([
+		...[
+			t.bubbles.coming,
+			t.bubbles.service,
+			t.bubbles.nothing,
+			t.bubbles.invite,
+			t.bubbles.bill,
+			voiceText.call.table,
+			...Object.values(voiceText.call.skills),
+			...voiceText.spoken.narration.model,
+			...voiceText.spoken.narration.steps,
+		].map((text) => ({ speaker: "chef" as const, text })),
+		{ speaker: "runner", text: t.bubbles.yes },
+		{ speaker: "cook", text: t.bubbles.yes },
+		{ speaker: "cook", text: t.bubbles.heat },
+	]);
+
+	/**
+	 * The chef calls the order aloud, as in any kitchen, and each ticket line lights up as
+	 * he names it. With the sound off, the ticket says the same.
+	 */
+	const callOrder = (result: Order) => {
+		const calls = announcement(result.demand, voiceText.call);
+		const lines = [...ticketList.children];
+		return voices.sequence(
+			calls.map((call) => ({
+				speaker: "chef" as const,
+				text: call.text,
+				from: chef.root,
+			})),
+			{
+				gap: 0.12,
+				onEach: (index) => {
+					const call = calls[index];
+					bubbleSay(chef, call.text, 1.2, true);
+					if (call.line !== null) lines[call.line]?.classList.add("is-called");
+				},
+			},
+		);
+	};
 	let narrated = false;
 
 	const serve = async (text: string, label: string) => {
@@ -702,14 +799,12 @@ export function start() {
 		openTicket(label);
 
 		await wait(0.8);
-		chef.faceTowards(runner.root.position);
-		say(chef, t.bubbles.coming);
+		// The chef finishes his « Ça marche ! » before calling the order.
+		const acknowledged = say(chef, t.bubbles.coming);
 		chef.hop();
-		await wait(0.7);
-		say(runner, t.bubbles.yes);
-		say(cook, t.bubbles.yes);
-		runner.hop();
-		cook.hop();
+		// The brigade turns to the chef, waiting for the call.
+		runner.faceTowards(chef.root.position);
+		cook.faceTowards(chef.root.position);
 		const outcome = await reading;
 		if (!outcome.ok) {
 			ticketList.replaceChildren(ticketLine("is-sent-back", t.write.noSkill));
@@ -719,17 +814,35 @@ export function start() {
 		}
 		const result = outcome.order;
 		tasted({ kind: "order", label });
+		saveVisit({ order: label });
 		const source = result.source;
 		fillTicket(result);
+		// The chef calls the order, the brigade answers.
+		chef.faceTowards(runner.root.position);
+		await acknowledged;
+		await callOrder(result);
+		say(runner, t.bubbles.yes);
+		gsap.delayedCall(0.15, () => say(cook, t.bubbles.yes));
+		runner.hop();
+		cook.hop();
+		await wait(0.7);
 		const narrate = !narrated;
 		narrated = true;
-		if (narrate) narration.show(0, source);
+		// The first order is told step by step. With the sound on, the kitchen waits for the
+		// chef to finish a sentence before the next step.
+		let telling: Promise<void> = Promise.resolve();
+		const tell = async (index: number) => {
+			if (!narrate) return;
+			await telling;
+			telling = narration.show(index, source);
+		};
+		await tell(0);
 		// The first time, the kitchen leaves a moment to read the subtitles.
 		await wait(narrate ? realSeconds(1.6) : 0.6);
 
 		// The check: every line the model wrote must quote the offer, or it goes back.
 		if (source === "model") {
-			if (narrate) narration.show(1, source);
+			await tell(1);
 			chef.faceTowards(kitchen.points.plate);
 			await play(checkTicket());
 			sound.stamp();
@@ -737,7 +850,7 @@ export function start() {
 		}
 
 		// Retrieval: the runner fetches one jar per skill found in the order.
-		if (narrate && source === "lexicon") narration.show(1, source);
+		if (source === "lexicon") await tell(1);
 		follow(kitchen.points.pantry);
 		await play(
 			runner.walk([new THREE.Vector3(-3.4, 0, -3.3), kitchen.points.pantry]),
@@ -786,6 +899,7 @@ export function start() {
 		runner.faceTowards(kitchen.points.stove.clone().setZ(-5));
 		runner.carry(null);
 
+		await telling;
 		// Cooking: the stove roars while the stations that match light up.
 		cook.faceTowards(kitchen.points.stove.clone().setZ(-5));
 		const heat = { v: steam };
@@ -793,10 +907,12 @@ export function start() {
 			steam = heat.v;
 		};
 		gsap.to(heat, { v: 1, duration: 0.3, onUpdate: syncSteam });
-		say(cook, t.bubbles.heat);
+		const heated = say(cook, t.bubbles.heat);
 		sound.sizzle();
 		if (!frame.wide) resetCamera();
-		if (narrate) narration.show(2, source);
+		// The chef lets the cook finish his shout before explaining.
+		if (narrate) await heated;
+		await tell(2);
 		await play(lightStations(result));
 		// Sped up, the stations light up too fast to read this step.
 		if (narrate && reducedMotion) await wait(realSeconds(1.6));
@@ -837,8 +953,10 @@ export function start() {
 
 		// The check: the chef inspects, stamps, rings the bell.
 		chef.faceTowards(kitchen.points.plate);
-		if (narrate) narration.show(3, source);
+		await tell(3);
 		await play(chef.inspect());
+		// The chef finishes his sentence before calling the service.
+		await telling;
 		stampDiv.classList.add("is-visible");
 		sound.stamp();
 		gsap.delayedCall(0.25, () => sound.bell());
@@ -937,6 +1055,7 @@ export function start() {
 	let billOffered = false;
 	const tasted = (tasting: Parameters<Bill["add"]>[0]) => {
 		bill.add(tasting);
+		saveVisit({ bill: [...bill.lines] });
 		if (billOffered || bill.size < 3) return;
 		billOffered = true;
 		gsap.delayedCall(4, () => {
@@ -944,6 +1063,29 @@ export function start() {
 			if (!busy) say(chef, t.bubbles.bill, 2);
 		});
 	};
+	// Back from another page of the site: the visit goes on where it was.
+	const saved = readVisit();
+	const isTasting = (value: unknown): value is Tasting => {
+		if (!value || typeof value !== "object") return false;
+		const line = value as Record<string, unknown>;
+		if (line.kind === "order") return typeof line.label === "string";
+		return (
+			(line.kind === "visit" || line.kind === "play") &&
+			typeof line.station === "string" &&
+			line.station in t.stations
+		);
+	};
+	for (const line of saved.bill) if (isTasting(line)) bill.add(line);
+	if (bill.size >= 3) {
+		billOffered = true;
+		billButton.classList.add("is-calling");
+	}
+	/** The last game at the pass: the chef's notebook explains it. */
+	let lastRounds: NotebookRound[] = saved.rounds.flatMap((round) => {
+		const known = rushCases.find((c) => c.id === round.id);
+		return known ? [{ id: known.id, choice: round.choice }] : [];
+	});
+
 	const openBill = () => {
 		const lines = bill.lines.map((tasting) => {
 			const li = document.createElement("li");
@@ -1020,6 +1162,8 @@ export function start() {
 		element<HTMLElement>(".visit-concept").textContent = t.stations[id].concept;
 		element<HTMLElement>(".visit-summary").textContent = project?.summary ?? "";
 		const link = element<HTMLAnchorElement>(".visit-play");
+		// At the pass, the project is read in the chef's notebook, without leaving the kitchen.
+		link.textContent = id === "pass" ? t.visit.notebook : t.visit.read;
 		const rushButton = element<HTMLButtonElement>(".visit-rush");
 		const soon = element<HTMLElement>(".visit-soon");
 		const playable = id === "pass" || id in games;
@@ -1188,6 +1332,11 @@ export function start() {
 
 	const endRush = () => {
 		const result = score(rounds);
+		lastRounds = rounds.map((round) => ({
+			id: round.rushCase.id,
+			choice: round.choice,
+		}));
+		saveVisit({ rounds: lastRounds });
 		rushPlay.hidden = true;
 		rushEnd.hidden = false;
 		element<HTMLElement>(".rush-progress").textContent = "";
@@ -1298,7 +1447,7 @@ export function start() {
 
 	window.addEventListener("keydown", (event) => {
 		if (event.key === "Escape") {
-			if (billDialog.open || writeDialog.open) return;
+			if (billDialog.open || writeDialog.open || notebook?.isOpen) return;
 			if (!rushPanel.hidden) quitRush();
 			else if (!gamePanel.hidden) closeGame();
 			else leave();
@@ -1310,18 +1459,47 @@ export function start() {
 		}
 	});
 
-	// Sound, off by default.
-	const soundToggle = element<HTMLButtonElement>(".sound-toggle");
-	soundToggle.addEventListener("click", () => {
+	// Sound, off by default: the corner's toggle, and the phone's during the arrival.
+	const soundButtons = [
+		element<HTMLButtonElement>(".sound-toggle"),
+		...document.querySelectorAll<HTMLButtonElement>(".arrival-sound"),
+	];
+	const captionsToggle = element<HTMLButtonElement>(".captions-toggle");
+	const toggleSound = () => {
 		if (sound.enabled) sound.disable();
 		else sound.enable();
-		soundToggle.setAttribute("aria-pressed", String(sound.enabled));
-		soundToggle.textContent = sound.enabled ? t.sound.disable : t.sound.enable;
+		for (const button of soundButtons) {
+			button.setAttribute("aria-pressed", String(sound.enabled));
+			button.textContent = sound.enabled ? t.sound.disable : t.sound.enable;
+		}
+		// Subtitles only mean something once the voices speak.
+		captionsToggle.hidden = !sound.enabled;
 		if (sound.enabled) sound.bell();
-	});
+	};
+	for (const button of soundButtons)
+		button.addEventListener("click", toggleSound);
+	// With the sound on, the voice says the sentence and the screen keeps the word:
+	// subtitles bring the sentences back.
+	const setCaptions = (on: boolean) => {
+		stage.classList.toggle("has-captions", on);
+		captionsToggle.setAttribute("aria-pressed", String(on));
+		try {
+			window.localStorage.setItem("brigade.captions", on ? "1" : "0");
+		} catch {
+			// Private browsing: the choice lasts for this visit.
+		}
+	};
+	try {
+		setCaptions(window.localStorage.getItem("brigade.captions") === "1");
+	} catch {
+		setCaptions(false);
+	}
+	captionsToggle.addEventListener("click", () =>
+		setCaptions(!stage.classList.contains("has-captions")),
+	);
 
 	// Until the first order, the chef invites the visitor now and then.
-	let ordered = false;
+	let ordered = saved.order !== null;
 	const invite = () => {
 		if (
 			!ordered &&
@@ -1397,6 +1575,15 @@ export function start() {
 					hemi,
 					sun,
 					sound,
+					voices,
+					// The terrace's exchanges, each line with its voice.
+					murmurs: voiceText.street.map((exchange, i) =>
+						exchange.flatMap((text, j) => {
+							const speaker = STREET_VOICES[lang][i]?.[j];
+							return text && speaker ? [{ speaker, text }] : [];
+						}),
+					),
+					spoken: voiceText.spoken,
 					brigade: { chef, runner, cook },
 					guest,
 					onFrame: (hook) => {
@@ -1423,10 +1610,60 @@ export function start() {
 				prologueCopy[lang],
 			)
 		: Promise.resolve();
+	/**
+	 * The chef's notebook: how the agent at the pass decided the claims the visitor just
+	 * judged. Loaded the first time it opens.
+	 */
+	let notebook: Notebook | null = null;
+	const chefHands = new THREE.Vector3();
+	const openNotebook = async () => {
+		if (busy || notebook?.isOpen) return;
+		const { createNotebook } = await import("./notebook/notebook");
+		notebook ??= createNotebook({
+			stage,
+			lang,
+			reducedMotion,
+			sound,
+			voices,
+			spoken: voiceText.notebook,
+			chef,
+			chefOnScreen: () => {
+				chef.root.getWorldPosition(chefHands);
+				chefHands.y += 1.1;
+				chefHands.project(camera);
+				return {
+					x: ((chefHands.x + 1) / 2) * stage.clientWidth,
+					y: ((1 - chefHands.y) / 2) * stage.clientHeight,
+				};
+			},
+			projectHref: bySlug.get("claims-agent")?.href ?? "",
+			onClose: () => chef.faceTowards(kitchen.points.plate),
+		});
+		chef.faceTowards(guest.root.position);
+		chef.hop();
+		await notebook.open(lastRounds);
+	};
+	element<HTMLButtonElement>(".rush-notebook").addEventListener("click", () => {
+		void openNotebook();
+	});
+	element<HTMLAnchorElement>(".visit-play").addEventListener(
+		"click",
+		(event) => {
+			if (visiting !== "pass") return;
+			event.preventDefault();
+			void openNotebook();
+		},
+	);
+
 	// After the tour the chef has just asked for an order: the next invitation can wait.
 	const firstVisit = arriving;
 	void opening.then(() => {
 		arriving = false;
+		// Back from the project page: the notebook opens again, where the visitor left it.
+		if (new URLSearchParams(window.location.search).has("carnet")) {
+			window.history.replaceState(null, "", window.location.pathname);
+			gsap.delayedCall(0.8, () => void openNotebook());
+		}
 		// The tour's balloon left with the focus: the first order takes it.
 		if (firstVisit && document.activeElement === document.body)
 			orderButtons[0]?.focus({ preventScroll: true });

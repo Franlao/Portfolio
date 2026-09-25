@@ -30,6 +30,11 @@ export default defineConfig({
 			}),
 		},
 	},
+	vite: {
+		// Modules loaded on demand (the chef's notebook, the project demos) use these:
+		// optimized up front, the dev server never has to reload the page for them.
+		optimizeDeps: { include: ["roughjs", "@xyflow/react", "nanostores"] },
+	},
 	markdown: {
 		processor: satteri({ mdastPlugins: [frenchTypography] }),
 	},

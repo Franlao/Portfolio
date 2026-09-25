@@ -1,10 +1,14 @@
 import gsap from "gsap";
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { TAXI_IDLE } from "../ambience";
 import type { Cook } from "../cook";
 import type { Sound } from "../sound";
 import type { StationId } from "../stations";
 import { palette } from "../toon";
+import type { VoiceCopy } from "../voice/copy";
+import type { Speaker } from "../voice/speakers";
+import type { Voices } from "../voice/voices";
 import type { PrologueCopy } from "./copy";
 import { buildFacade, type Facade } from "./facade";
 import { Person } from "./people";
@@ -28,6 +32,12 @@ export interface Stagehand {
 	hemi: THREE.HemisphereLight;
 	sun: THREE.DirectionalLight;
 	sound: Sound;
+	/** The voices, silent until the sound is on. */
+	voices: Voices;
+	/** The terrace's exchanges: each line with the neighbour who says it. */
+	murmurs: { speaker: Speaker; text: string }[][];
+	/** What the voices say beyond the bubbles and the cards. */
+	spoken: VoiceCopy["spoken"];
 	brigade: { chef: Cook; runner: Cook; cook: Cook };
 	/** The visitor, as a character: they get out of the taxi and end up at the chef's table. */
 	guest: Person;
@@ -97,21 +107,46 @@ function element<T extends HTMLElement>(root: ParentNode, selector: string): T {
 	return found;
 }
 
-/** A comic speech bubble over a character's head. Texts arrive typeset. */
-function speaker(person: Person) {
+/** The terrace's voices, silenced when the house opens. */
+const STREET: Speaker[] = [
+	"street-a",
+	"street-b",
+	"street-c",
+	"street-d",
+	"tourist",
+];
+
+/**
+ * A comic speech bubble over a character's head, and their voice once the sound is on.
+ * Texts arrive typeset.
+ */
+function speaker(person: Person, voices: Voices, who: Speaker) {
 	const div = document.createElement("div");
 	div.className = "bubble";
 	const anchor = new CSS2DObject(div);
 	anchor.position.set(0, person.bubbleHeight, 0);
 	person.root.add(anchor);
-	return (text: string, seconds = 2) => {
+	let hide: gsap.core.Tween | null = null;
+	const show = (text: string, seconds: number, voiced: boolean) => {
 		div.textContent = text;
 		div.classList.add("is-visible");
+		div.classList.toggle("is-voiced", voiced);
+		hide?.kill();
 		// Reduced motion speeds the global timeline up: reading time stays real.
-		gsap.delayedCall(seconds * gsap.globalTimeline.timeScale(), () =>
-			div.classList.remove("is-visible"),
+		hide = gsap.delayedCall(seconds * gsap.globalTimeline.timeScale(), () =>
+			div.classList.remove("is-visible", "is-voiced"),
 		);
 	};
+	/** The bubble reads `text`; the voice may say more: `spoken`. */
+	const say = (text: string, seconds = 2, spoken = text) => {
+		show(text, seconds, false);
+		return voices.say(who, spoken, {
+			from: person.root,
+			onStart: (clip) =>
+				show(text, Math.max(seconds, clip.seconds + 0.3), true),
+		});
+	};
+	return { say, bubble: div };
 }
 
 /**
@@ -125,6 +160,20 @@ export async function arrive(
 	copy: PrologueCopy,
 ): Promise<void> {
 	const { stage, view, scene, guest } = hand;
+	// Outside, a Lyon evening: the street's sounds, until the house opens.
+	hand.sound.setScene("street");
+	// The street's lines, fetched as soon as the sound is on.
+	hand.voices.preload([
+		...Object.values(hand.spoken.host).map((text) => ({
+			speaker: "host" as const,
+			text,
+		})),
+		...hand.murmurs.flat(),
+		...[...hand.spoken.tour, copy.bubbles.order].map((text) => ({
+			speaker: "chef" as const,
+			text,
+		})),
+	]);
 	const card = element<HTMLElement>(stage, ".arrival");
 	const facade = buildFacade(copy.facade);
 	const street = buildStreet();
@@ -174,11 +223,19 @@ export async function arrive(
 		coat: palette.ink,
 		trousers: palette.ink,
 		skin: palette.skins[3],
-		hair: palette.ink,
+		// A « mère lyonnaise »: salt-and-pepper bun, no moustache.
+		hair: 0x8a847c,
+		hairStyle: "bun",
+		moustache: false,
 	});
 	host.root.position.copy(HOST_SPOT);
 	host.faceTowards(HOST_SPOT.clone().setZ(12));
-	const hostSays = speaker(host);
+	// The maître d' is a « mère lyonnaise », as in the bouchons of old.
+	const { say: hostSays, bubble: hostBubble } = speaker(
+		host,
+		hand.voices,
+		"host",
+	);
 	const taxi = buildCar({ body: 0xefe6d2, roof: palette.ink, taxi: true });
 	const taxiState = { x: -26 };
 	taxi.root.position.set(taxiState.x, -0.15, TAXI_LANE);
@@ -189,10 +246,40 @@ export async function arrive(
 		traffic.update(delta);
 		patrons.update(delta);
 		host.update(delta);
+		// Her head and her balloon move with her voice.
+		const level = hand.voices.level("host");
+		host.talk(level);
+		hostBubble.style.setProperty("--voice", level.toFixed(2));
 	});
 	guest.root.visible = false;
 	// Passers-by step around the maître d' and the visitor rather than through them.
 	crowd.avoid([host.root, guest.root]);
+
+	// The terrace talks among itself: now and then, an exchange between two tables.
+	const talkers = patrons.group.children;
+	let murmur = 0;
+	let chatter: gsap.core.Tween | null = null;
+	const murmurOnce = () => {
+		const exchange = hand.murmurs[murmur++ % hand.murmurs.length];
+		if (hand.sound.enabled && exchange && talkers.length > 1) {
+			const first = Math.floor(Math.random() * talkers.length);
+			const second =
+				(first + 1 + Math.floor(Math.random() * (talkers.length - 1))) %
+				talkers.length;
+			void hand.voices.sequence(
+				exchange.map((line, i) => ({
+					...line,
+					from: talkers[i === 0 ? first : second],
+				})),
+				{ plan: "street", gain: 0.5, gap: 0.35 },
+			);
+		}
+		chatter = gsap.delayedCall(
+			(5 + Math.random() * 5) * gsap.globalTimeline.timeScale(),
+			murmurOnce,
+		);
+	};
+	chatter = gsap.delayedCall(2.5 * gsap.globalTimeline.timeScale(), murmurOnce);
 
 	// The menu framed by the door leads to the text version.
 	const menuLink = document.createElement("a");
@@ -224,15 +311,24 @@ export async function arrive(
 		return play(tl);
 	};
 	const exit = () => taxi.root.localToWorld(taxi.exitPoint.clone());
+	// The taxi's engine, panned where the taxi is on screen: beyond ±1, it is off screen.
+	const taxiPan = () =>
+		(hand.toScreen(taxi.root.position).x / stage.clientWidth) * 2 - 1;
 	const story = async () => {
-		await play(
-			gsap.to(taxiState, {
-				x: TAXI_STOP,
-				duration: 3,
-				ease: "power2.out",
-				onUpdate: () => taxi.setX(taxiState.x),
-			}),
-		);
+		// It slows down to a stop: with power2.out, the speed falls with 1 − progress.
+		const arrival = gsap.to(taxiState, {
+			x: TAXI_STOP,
+			duration: 3,
+			ease: "power2.out",
+			onUpdate: () => {
+				taxi.setX(taxiState.x);
+				hand.sound.taxi(
+					TAXI_IDLE + (1 - TAXI_IDLE) * (1 - arrival.progress()),
+					taxiPan(),
+				);
+			},
+		});
+		await play(arrival);
 		if (skipped) return;
 		phoneSaysArrived();
 		hand.sound.pop();
@@ -254,6 +350,7 @@ export async function arrive(
 		await walk(host, [new THREE.Vector3(door.x + 0.8, 0, 7.35)], 2.4);
 		if (skipped) return;
 		host.faceTowards(door);
+		hand.sound.carDoor(true);
 		await play(taxi.rearDoor(true));
 		if (skipped) return;
 		// The visitor gets out, phone still in hand.
@@ -267,18 +364,26 @@ export async function arrive(
 		host.faceTowards(guest.root.position);
 		guest.faceTowards(host.root.position);
 		walks.push(host.bow());
-		hostSays(copy.host.welcome, 2.6);
+		hostSays(copy.host.welcome, 2.6, hand.spoken.host.welcome);
 		await wait(1.1);
 		if (skipped) return;
 		guest.holdPhone(false);
 		await play(taxi.rearDoor(false));
 		if (skipped) return;
+		hand.sound.carDoor(false);
 		// The taxi leaves; the maître d' walks the visitor to the door.
-		gsap.to(taxiState, {
+		const departure = gsap.to(taxiState, {
 			x: 34,
 			duration: 2.4,
 			ease: "power2.in",
-			onUpdate: () => taxi.setX(taxiState.x),
+			onUpdate: () => {
+				taxi.setX(taxiState.x);
+				hand.sound.taxi(
+					TAXI_IDLE + (1 - TAXI_IDLE) * departure.progress(),
+					taxiPan(),
+				);
+			},
+			onComplete: () => hand.sound.taxi(0, 0),
 		});
 		void walk(host, [HOST_SPOT], 2.2).then(() => {
 			if (!skipped) host.faceTowards(DOORSTEP);
@@ -286,11 +391,14 @@ export async function arrive(
 		await walk(guest, [DOORSTEP], 1.8);
 		if (skipped) return;
 		guest.faceTowards(DOORWAY);
+		// The next step is the visitor's: she says so.
+		hostSays(copy.host.expecting, 2.4, hand.spoken.host.expecting);
 	};
 	// Skipping (or reduced motion) puts everyone where the story would have left them.
 	const settle = () => {
 		for (const tl of walks) tl.progress(1);
 		gsap.killTweensOf([taxiState, guest.root.position, view, view.target]);
+		hand.sound.taxi(0, 0);
 		taxi.root.visible = false;
 		host.root.position.copy(HOST_SPOT);
 		host.faceTowards(DOORSTEP);
@@ -353,12 +461,16 @@ export async function arrive(
 	// « Par ici ! » : the maître d' opens the door and the visitor walks in.
 	host.faceTowards(facade.points.door);
 	host.gesture(INSIDE, 1.6);
-	hostSays(copy.host.thisWay, 1.4);
+	hostSays(copy.host.thisWay, 1.4, hand.spoken.host.thisWay);
 	gsap.to(facade.door.rotation, { y: 1.75, duration: 0.6, ease: "power2.out" });
+	hand.sound.frontDoor();
 	if (!hand.reducedMotion) {
 		void walk(guest, [DOORWAY, INSIDE], 2);
 		await wait(0.6);
 	}
+	// Inside, the street goes quiet.
+	chatter?.kill();
+	for (const who of STREET) hand.voices.stop(who);
 	await openHouse(hand, facade, street, life, day, copy.ding);
 	stopLife();
 	scene.remove(facade.group, street.group, life);
@@ -398,6 +510,8 @@ async function openHouse(
 	const { view } = hand;
 	const rest = hand.rest();
 	hand.sound.bell();
+	// The street fades out as the walls fall: the kitchen's sounds come in.
+	hand.sound.setScene("kitchen", 1.5);
 	const anchor = document.createElement("div");
 	anchor.className = "ding-anchor";
 	const ding = document.createElement("span");
@@ -548,13 +662,14 @@ async function tour(hand: Stagehand, copy: PrologueCopy): Promise<void> {
 	balloon.setAttribute("aria-label", copy.tour.label);
 	balloon.innerHTML = `
 		<p class="tour-count"></p>
-		<p class="tour-text" aria-live="polite"></p>
+		<p class="tour-text" aria-live="polite"><span class="tour-said"></span><span class="tour-heard"></span></p>
 		<div class="tour-actions">
 			<button type="button" class="tour-next"></button>
 			<button type="button" class="tour-skip"></button>
 		</div>`;
 	stage.appendChild(balloon);
-	const text = element<HTMLElement>(balloon, ".tour-text");
+	const said = element<HTMLElement>(balloon, ".tour-said");
+	const heard = element<HTMLElement>(balloon, ".tour-heard");
 	const count = element<HTMLElement>(balloon, ".tour-count");
 	const next = element<HTMLButtonElement>(balloon, ".tour-next");
 	const skip = element<HTMLButtonElement>(balloon, ".tour-skip");
@@ -583,7 +698,17 @@ async function tour(hand: Stagehand, copy: PrologueCopy): Promise<void> {
 
 	const show = (index: number) => {
 		count.textContent = copy.tour.step(index + 1, steps.length);
-		text.textContent = steps[index];
+		said.textContent = steps[index];
+		// With the sound on, the chef tells the visitor more than the card reads.
+		const speech = hand.spoken.tour[index] ?? steps[index];
+		heard.textContent = speech;
+		balloon.classList.remove("is-heard");
+		hand.voices.stop("chef");
+		void hand.voices.say("chef", speech, {
+			from: brigade.chef.root,
+			plan: "aside",
+			onStart: () => balloon.classList.add("is-heard"),
+		});
 		next.textContent =
 			index === steps.length - 1 ? copy.tour.done : copy.tour.next;
 		orders?.classList.toggle("is-spotlit", index === 1);
@@ -643,6 +768,8 @@ async function tour(hand: Stagehand, copy: PrologueCopy): Promise<void> {
 	});
 
 	gsap.ticker.remove(follow);
+	// Skipped halfway: the chef stops mid-sentence.
+	hand.voices.stop("chef");
 	orders?.classList.remove("is-spotlit");
 	hand.spotlight([]);
 	stage.classList.remove("is-touring");

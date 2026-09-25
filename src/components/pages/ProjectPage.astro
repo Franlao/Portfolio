@@ -6,6 +6,8 @@ import {
 	type Lang,
 	projectPath,
 } from "../../i18n/ui";
+import { copy as brigadeCopy } from "../../lab/brigade/copy";
+import { stations } from "../../lab/brigade/stations";
 import Base from "../../layouts/Base.astro";
 import { localize, splitProjectId } from "../../lib/projects";
 import Cartouche from "../Cartouche.astro";
@@ -21,14 +23,25 @@ const t = getTranslations(lang);
 const { Content } = await render(entry);
 const data = localize(lang, entry.data);
 const alternates = { fr: projectPath("fr", slug), en: projectPath("en", slug) };
+// The page is a sheet of the chef's notebook, filed under the kitchen station that plays the project.
+const station = stations.find((s) => s.slug === slug);
+const stationName = station
+	? brigadeCopy[lang].stations[station.id].name
+	: null;
+// Back in the kitchen, the notebook opens again on this project.
+const kitchen = `${homePath(lang)}?carnet=${slug}`;
 ---
 
 <Base lang={lang} alternates={alternates} title={`${data.title}, Solim Laokpezi`} description={data.summary}>
 	<Cartouche lang={lang} alternates={alternates} />
 	<main class="sheet">
-		<article>
+		<article class="carnet">
+			<p class="carnet-band">
+				<span class="carnet-title">{t("project.notebook")}</span>
+				{stationName && <span class="carnet-station">{stationName}</span>}
+			</p>
 			<header class="sheet-row project-head">
-				<p class="sheet-main project-back"><a href={homePath(lang)}>{t("project.back")}</a></p>
+				<p class="sheet-main project-back"><a href={kitchen}>{t("project.back")}</a></p>
 				<h1 class="sheet-main">{data.title}</h1>
 				<p class="sheet-main project-meta">{data.org}, {data.period}</p>
 				<p class="sheet-main project-lede">{data.summary}</p>
@@ -38,12 +51,145 @@ const alternates = { fr: projectPath("fr", slug), en: projectPath("en", slug) };
 					<Content />
 				</div>
 			</div>
+			<footer class="sheet-row carnet-foot">
+				<p class="sheet-main"><a href={kitchen}>{t("project.back")}</a></p>
+			</footer>
 		</article>
 	</main>
 	<Footer lang={lang} />
 </Base>
 
 <style>
+	/*
+	 * The sheet: a page of the notebook the chef opens in the kitchen, lying on the graph
+	 * paper. Plain paper outlined in ink, the next sheet showing underneath, a cloth band on
+	 * top and a sewn binding. On a phone the page spans the screen and the band becomes the
+	 * binding, as on an order pad; from 720 px the binding is a cloth spine on the left.
+	 */
+	.carnet {
+		--carnet-pad: var(--gutter);
+		--carnet-stitch: color-mix(in srgb, var(--rule) 45%, transparent);
+
+		position: relative;
+		margin: var(--space-6) calc(-1 * var(--gutter)) 0;
+		padding: 0 var(--carnet-pad) var(--space-6);
+		background: var(--leaf);
+		border-block: 1.5px solid var(--rule);
+		box-shadow:
+			0 5px 0 -1.5px var(--leaf),
+			0 5px 0 0 var(--rule-soft);
+		/* The kitchen's notebook has the same name: the browser morphs one into the other. */
+		view-transition-name: carnet;
+	}
+
+	.carnet-band {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0 var(--space-4);
+		margin-inline: calc(-1 * var(--carnet-pad));
+		padding: 1.25rem var(--carnet-pad) var(--space-2);
+		font-size: var(--step--1);
+		line-height: 1.35;
+		/* The notebook's kraft cover, as in the kitchen. */
+		background:
+			repeating-linear-gradient(
+				115deg,
+				rgb(255 255 255 / 0.06) 0 3px,
+				transparent 3px 9px
+			),
+			var(--kraft);
+		border-bottom: 1.5px solid var(--rule);
+	}
+
+	/* Its label, stuck on the cover. */
+	.carnet-title {
+		display: inline-block;
+		padding: 0.15rem 0.6rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		background: var(--leaf);
+		border: 1.5px solid var(--rule);
+		border-radius: 3px;
+		box-shadow: 0 2px 0 var(--rule);
+		transform: rotate(-1deg);
+	}
+
+	.carnet-station {
+		font-weight: 800;
+		color: var(--ink);
+	}
+
+	/* The stitches, across the band on a phone, down the fold from 720 px. */
+	.carnet::after {
+		content: "";
+		position: absolute;
+		top: 0.5rem;
+		inset-inline: var(--carnet-pad);
+		height: 1.5px;
+		background: repeating-linear-gradient(
+			to right,
+			var(--carnet-stitch) 0 8px,
+			transparent 8px 14px
+		);
+		pointer-events: none;
+	}
+
+	@media (min-width: 720px) {
+		.carnet {
+			--carnet-pad: var(--space-6);
+
+			margin-inline: 0;
+			border: 1.5px solid var(--rule);
+			border-radius: 0 6px 6px 0;
+			box-shadow:
+				5px 5px 0 -1.5px var(--leaf),
+				5px 5px 0 0 var(--rule-soft);
+		}
+
+		.carnet-band {
+			padding-block: var(--space-3);
+			border-top-right-radius: 4.5px;
+		}
+
+		/* The spine: the cover's cloth, just left of the page, in the gutter. */
+		.carnet::before {
+			content: "";
+			position: absolute;
+			top: -1.5px;
+			bottom: -1.5px;
+			left: -13.5px;
+			width: 12px;
+			background: var(--kraft);
+			border: 1.5px solid var(--rule);
+			border-right: 0;
+			border-radius: 4px 0 0 4px;
+			pointer-events: none;
+		}
+
+		.carnet::after {
+			top: var(--space-4);
+			bottom: var(--space-4);
+			left: 9px;
+			right: auto;
+			width: 1.5px;
+			height: auto;
+			background: repeating-linear-gradient(
+				to bottom,
+				var(--carnet-stitch) 0 8px,
+				transparent 8px 14px
+			);
+		}
+	}
+
+	@media (min-width: 1180px) {
+		.carnet {
+			--carnet-pad: var(--space-7);
+		}
+	}
+
 	.project-head {
 		padding-block: var(--space-6) var(--space-5);
 	}
@@ -93,5 +239,10 @@ const alternates = { fr: projectPath("fr", slug), en: projectPath("en", slug) };
 
 	.prose :global(.demo) {
 		margin-top: var(--space-6);
+	}
+
+	.carnet-foot {
+		margin-top: var(--space-7);
+		font-size: var(--step--1);
 	}
 </style>

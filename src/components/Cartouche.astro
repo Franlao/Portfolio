@@ -42,6 +42,14 @@ const t = getTranslations(lang);
 
 <script>
 	import { $verifiedFor } from "../lib/offer/store";
+	import { readVisit } from "../lib/visit";
+
+	// A visitor coming from the kitchen already placed an order there: say so, unless
+	// this page has checked the site against an offer of its own (the menu's lab).
+	if ($verifiedFor.get() === null) {
+		const { order } = readVisit();
+		if (order) $verifiedFor.set(order);
+	}
 
 	const target = document.querySelector<HTMLElement>("[data-verified-for]");
 	if (target) {

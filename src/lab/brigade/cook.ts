@@ -21,6 +21,8 @@ export class Cook {
 	private waving = 0;
 	private phase = Math.random() * Math.PI * 2;
 	private readonly eyes: THREE.Mesh[] = [];
+	private readonly mouth: THREE.Mesh;
+	private voice = 0;
 	private nextBlink = 1 + Math.random() * 3;
 
 	constructor(options: CookOptions) {
@@ -99,6 +101,14 @@ export class Cook {
 			this.body.add(eye);
 			this.eyes.push(eye);
 		}
+		// The mouth: a line at rest, it opens with the voice.
+		this.mouth = new THREE.Mesh(
+			new THREE.SphereGeometry(0.045, 10, 8),
+			toon(palette.ink),
+		);
+		this.mouth.scale.set(1, 0.15, 0.4);
+		this.mouth.position.set(0, 1.5, 0.228);
+		this.body.add(this.mouth);
 
 		const toqueHeight = chef ? 0.5 : 0.22;
 		const toque = outline(
@@ -214,6 +224,11 @@ export class Cook {
 			.to(this.body.rotation, { x: 0, duration: 0.3, ease: "power2.inOut" });
 	}
 
+	/** How loud the cook is speaking, from 0 to 1: the mouth follows the voice. */
+	talk(level: number) {
+		this.voice = level;
+	}
+
 	/** Waves hello with the left arm, for a few seconds. */
 	wave(seconds = 1.8) {
 		this.waving = seconds;
@@ -230,6 +245,7 @@ export class Cook {
 		this.nextBlink -= delta;
 		const closed = this.nextBlink < 0.12;
 		for (const eye of this.eyes) eye.scale.y = closed ? 0.15 : 1;
+		this.mouth.scale.y += (0.15 + this.voice * 1.3 - this.mouth.scale.y) * 0.6;
 		if (this.nextBlink < 0) this.nextBlink = 2 + Math.random() * 4;
 		if (this.walking) {
 			const swing = Math.sin(this.phase) * 0.6;

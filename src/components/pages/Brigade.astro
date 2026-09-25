@@ -1,9 +1,10 @@
 ---
 import "../../lab/brigade/brigade.css";
 import { contact } from "../../data/contact";
-import { homePath, type Lang, menuPath, projectPath } from "../../i18n/ui";
+import { homePath, type Lang, menuPath } from "../../i18n/ui";
 import { copy } from "../../lab/brigade/copy";
 import { prologueCopy } from "../../lab/brigade/prologue/copy";
+import { voiceCopy } from "../../lab/brigade/voice/copy";
 import Base from "../../layouts/Base.astro";
 import { presets } from "../../lib/offer/presets";
 import { getProjectCards } from "../../lib/projects";
@@ -16,6 +17,7 @@ interface Props {
 const { lang } = Astro.props;
 // French copy is already typographized in copy.ts.
 const t = copy[lang];
+const voice = voiceCopy[lang];
 const projects = await getProjectCards(lang);
 const alternates = { fr: homePath("fr"), en: homePath("en") };
 const languages = ["fr", "en"] as const;
@@ -141,7 +143,7 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 				<p class="rush-chef"></p>
 				<div class="rush-end-actions">
 					<button type="button" class="rush-again">{t.rush.again}</button>
-					<a href={projectPath(lang, "claims-agent")}>{t.rush.howItDecides}</a>
+					<button type="button" class="rush-notebook">{t.rush.howItDecides}</button>
 				</div>
 			</div>
 		</section>
@@ -158,6 +160,7 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 		<div class="brigade-corner">
 			<button type="button" class="bill-open">{t.bill.open}</button>
 			<button type="button" class="sound-toggle" aria-pressed="false">{t.sound.enable}</button>
+			<button type="button" class="captions-toggle" aria-pressed="false" hidden>{voice.captions}</button>
 			<nav class="lang-switch" aria-label={t.language}>
 				{
 					languages.map((code) =>
@@ -194,6 +197,7 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 				<button type="button" class="bill-share">{t.bill.share}</button>
 				<p class="bill-shared" role="status"></p>
 				<input class="bill-link" type="text" readonly hidden aria-label={t.bill.linkLabel} />
+				<p class="bill-voices">{voice.credit}</p>
 				<button type="submit" class="bill-close">{t.bill.close}</button>
 			</form>
 		</dialog>

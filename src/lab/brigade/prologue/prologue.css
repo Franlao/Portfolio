@@ -326,6 +326,23 @@
 	}
 }
 
+/* The evening is better heard: the sound, one tap away from the booking. */
+.arrival-sound {
+	padding: 0.3rem 0.9rem;
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 750;
+	color: var(--ink);
+	background: transparent;
+	border: 1.5px solid var(--ink);
+	border-radius: 999px;
+	cursor: pointer;
+}
+
+.arrival-sound[aria-pressed="true"] {
+	background: var(--lamp);
+}
+
 .arrival-menu {
 	font-size: 0.8rem;
 	font-weight: 600;
@@ -389,6 +406,19 @@
 	font-size: 1.02rem;
 	font-weight: 650;
 	line-height: 1.4;
+}
+
+/* The chef says more than the card reads. With subtitles on, the card shows what he says. */
+.tour-heard {
+	display: none;
+}
+
+.has-captions .tour.is-heard .tour-said {
+	display: none;
+}
+
+.has-captions .tour.is-heard .tour-heard {
+	display: inline;
 }
 
 .tour-actions {
@@ -598,6 +628,21 @@
 	font-family: var(--font-mono);
 	font-size: 0.8rem;
 	border-top: 1px solid var(--ink);
+}
+
+/* With subtitles on, the narration shows what the chef says. */
+.narration-heard {
+	display: none;
+	font-weight: 650;
+	line-height: 1.4;
+}
+
+.has-captions .narration.is-heard .narration-kitchen {
+	display: none;
+}
+
+.has-captions .narration.is-heard .narration-heard {
+	display: block;
 }
 
 .narration-ai span {

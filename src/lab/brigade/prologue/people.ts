@@ -34,6 +34,8 @@ export interface Outfit {
 	hatStyle?: HatStyle;
 	/** A coat down to the knees. The visitor always wears one; the maître d' never does. */
 	longCoat?: boolean;
+	/** The maître d's moustache, unless false. */
+	moustache?: boolean;
 }
 
 /** Mulberry32: a tiny seeded generator, so outfits and crowds replay identically. */
@@ -199,7 +201,7 @@ export function meshCount(outfit: Outfit): number {
 	if (hair === "crop" || hair === "curly") n += 2;
 	else if (hair !== "bald") n += 4;
 	// Waistcoat, bow tie, apron, moustache, napkin.
-	if (host) n += 2 + 1 + 2 + 1 + 2;
+	if (host) n += 2 + 1 + 2 + (outfit.moustache === false ? 0 : 1) + 2;
 	else if (outfit.longCoat || recruiter) n += 2;
 	if (outfit.accent !== undefined) n += recruiter ? 3 : 2;
 	if (outfit.hat) n += 2;
@@ -305,6 +307,7 @@ export class Person {
 	private phoning = false;
 	private sipping = 0;
 	private nodding = 0;
+	private voice = 0;
 	private glancing: THREE.Vector3 | null = null;
 
 	constructor(outfit: Outfit, seed = 0x5eed + 7919 * created++) {
@@ -530,17 +533,19 @@ export class Person {
 		apron.castShadow = true;
 		apron.position.y = 0.52;
 		this.body.add(apron);
-		const moustache = part(
-			shape("moustache", () => {
-				const bar = new THREE.CapsuleGeometry(0.028, 0.1, 3, 6);
-				bar.rotateZ(Math.PI / 2);
-				return bar;
-			}),
-			outfit.hair,
-			null,
-		);
-		moustache.position.set(0, 0.15, 0.245);
-		this.head.add(moustache);
+		if (outfit.moustache !== false) {
+			const moustache = part(
+				shape("moustache", () => {
+					const bar = new THREE.CapsuleGeometry(0.028, 0.1, 3, 6);
+					bar.rotateZ(Math.PI / 2);
+					return bar;
+				}),
+				outfit.hair,
+				null,
+			);
+			moustache.position.set(0, 0.15, 0.245);
+			this.head.add(moustache);
+		}
 		const napkin = part(
 			shape("napkin", () => new THREE.BoxGeometry(0.035, 0.3, 0.15)),
 			SHIRT,
@@ -697,6 +702,11 @@ export class Person {
 		if (this.cup?.visible && this.sipping <= 0) this.sipping = SIP_TIME;
 	}
 
+	/** How loud the character is speaking, from 0 to 1: the head moves with the words. */
+	talk(level: number) {
+		this.voice = level;
+	}
+
 	/** Two small nods, as in a conversation. */
 	nod() {
 		if (this.nodding <= 0) this.nodding = NOD_TIME;
@@ -762,7 +772,7 @@ export class Person {
 				r.z += (target.z - r.z) * k;
 			}
 			let pitch = this.phoning ? 0.3 : 0;
-			pitch -= 0.15 * sip;
+			pitch -= 0.15 * sip + 0.09 * this.voice;
 			if (this.nodding > 0) {
 				const t = 1 - this.nodding / NOD_TIME;
 				pitch += 0.16 * Math.max(0, Math.sin(t * Math.PI * 4));

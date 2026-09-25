@@ -280,6 +280,20 @@
 	transform: none;
 }
 
+/* A voiced balloon: two inked sound lines beside it, beating with the voice (--voice,
+   from 0 to 1, set on every frame by main.ts). */
+.bubble.is-voiced::before {
+	content: "))";
+	position: absolute;
+	top: 50%;
+	left: calc(100% + 3px);
+	font-weight: 900;
+	letter-spacing: -0.1em;
+	opacity: calc(0.35 + var(--voice, 0) * 0.65);
+	transform: translateY(-50%) scaleY(calc(0.7 + var(--voice, 0) * 0.7));
+	transform-origin: left center;
+}
+
 /* The chef's stamp. */
 
 .stamp {
@@ -642,7 +656,8 @@
 	gap: 0.5rem;
 }
 
-.sound-toggle {
+.sound-toggle,
+.captions-toggle {
 	padding: 0.4rem 0.75rem;
 	font: inherit;
 	font-size: 0.8rem;
@@ -654,7 +669,8 @@
 	cursor: pointer;
 }
 
-.sound-toggle[aria-pressed="true"] {
+.sound-toggle[aria-pressed="true"],
+.captions-toggle[aria-pressed="true"] {
 	color: var(--ink);
 	background: var(--lamp);
 	border-color: var(--lamp);
@@ -1014,9 +1030,22 @@
 	gap: 1rem;
 }
 
-.rush-end-actions a {
+.rush-end-actions a,
+.rush-notebook {
 	font-weight: 700;
 	color: var(--ink);
+}
+
+/* Opens the chef's notebook: a link in look, it stays in the kitchen. */
+.rush-notebook {
+	padding: 0;
+	font: inherit;
+	font-weight: 700;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	background: none;
+	border: 0;
+	cursor: pointer;
 }
 
 .is-rushing .intro,
@@ -1046,12 +1075,14 @@
 	}
 
 	.sound-toggle,
+	.captions-toggle,
 	.lang-switch {
 		font-size: 0.72rem;
 		line-height: 1.2;
 	}
 
-	.sound-toggle {
+	.sound-toggle,
+	.captions-toggle {
 		padding: 0.3rem 0.55rem;
 	}
 
@@ -1210,6 +1241,11 @@
 	font-family: var(--font);
 	font-weight: 600;
 	color: var(--model);
+}
+
+/* The chef calls this line aloud: it lights up as he names it. */
+.ticket-lines li.is-called {
+	background: linear-gradient(transparent 55%, rgb(255 200 87 / 0.65) 55%);
 }
 
 .ticket-tick {
@@ -1437,6 +1473,13 @@
 	background: #fff;
 	border: 1.5px solid var(--ink);
 	border-radius: 2px;
+}
+
+.bill-voices {
+	margin-top: 0.8rem;
+	font-size: 0.72rem;
+	line-height: 1.4;
+	color: var(--ink-soft);
 }
 
 .bill-shared {

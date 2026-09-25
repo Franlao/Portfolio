@@ -38,6 +38,9 @@
 	--check: #b8322c;
 	--check-tint: #f3dcd6;
 	--mark: #e4ecc4;
+	/* The chef's notebook: its kraft cover and its paper, in the kitchen and on the project pages. */
+	--kraft: #a9784a;
+	--leaf: #fbf8ee;
 
 	--font: "Recursive", ui-sans-serif, system-ui, sans-serif;
 	--font-mono: "Recursive Mono", ui-monospace, "Cascadia Mono", monospace;
@@ -87,6 +90,8 @@
 		--check: #f08070;
 		--check-tint: #3a2522;
 		--mark: #34401f;
+		--kraft: #8a6038;
+		--leaf: #202521;
 	}
 }
 
@@ -103,6 +108,8 @@
 	--check: #f08070;
 	--check-tint: #3a2522;
 	--mark: #34401f;
+	--kraft: #8a6038;
+	--leaf: #202521;
 }
 
 *,
@@ -117,6 +124,13 @@
 html {
 	-webkit-text-size-adjust: 100%;
 	text-size-adjust: 100%;
+}
+
+/* Pages hand over to one another: the chef's notebook, opened in the kitchen, becomes
+   the project page (both carry view-transition-name: carnet). Browsers without
+   cross-document view transitions simply navigate. */
+@view-transition {
+	navigation: auto;
 }
 
 body {
@@ -357,6 +371,19 @@ pre,
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 		scroll-behavior: auto !important;
+	}
+
+	/* No morph between pages: the next one simply replaces this one. */
+	@view-transition {
+		navigation: none;
+	}
+
+	/* For transitions a page starts itself. Kept out of the rule above: a browser that
+     does not know these pseudo-elements would drop the whole selector list. */
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
 	}
 }
 /* biome-ignore-end lint/complexity/noImportantStyles: end of reduced motion overrides. */

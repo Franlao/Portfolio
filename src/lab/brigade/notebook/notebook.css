@@ -1,0 +1,749 @@
+/* The chef's notebook: a paper spread over the kitchen, written in the site's three
+   strokes. Ruled graphite for code, freehand blue for a model, red pencil for a check. */
+
+.notebook {
+	--leaf: #fbf8ee;
+	--grid: rgb(27 30 28 / 0.055);
+	--graphite: #3d423f;
+	--kraft: #a9784a;
+	width: min(72rem, calc(100% - 32px));
+	max-width: none;
+	height: min(46rem, calc(100% - 32px));
+	max-height: none;
+	padding: 0;
+	overflow: visible;
+	color: var(--ink);
+	background: transparent;
+	border: 0;
+}
+
+.notebook::backdrop {
+	background: rgb(10 20 16 / 0.55);
+}
+
+.notebook-book {
+	position: relative;
+	height: 100%;
+	/* The same name as the project page's sheet: the browser morphs one into the other. */
+	view-transition-name: carnet;
+	transform-origin: center;
+}
+
+.notebook-spread {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+	height: 100%;
+	background-color: var(--leaf);
+	background-image:
+		linear-gradient(var(--grid) 1px, transparent 1px),
+		linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+	background-size: 18px 18px;
+	border: 2px solid var(--ink);
+	border-radius: 6px;
+	box-shadow:
+		0 10px 0 rgb(0 0 0 / 0.35),
+		0 0 0 6px var(--kraft),
+		0 0 0 8px var(--ink);
+}
+
+/* The fold of the spine, and its stitches. */
+.notebook-spread::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(100% * 1 / 2.15);
+	width: 34px;
+	transform: translateX(-50%);
+	background: linear-gradient(
+		90deg,
+		transparent,
+		rgb(0 0 0 / 0.09) 45%,
+		rgb(0 0 0 / 0.14) 50%,
+		rgb(0 0 0 / 0.09) 55%,
+		transparent
+	);
+	pointer-events: none;
+}
+
+.notebook-spread::after {
+	content: "";
+	position: absolute;
+	top: 14px;
+	bottom: 14px;
+	left: calc(100% * 1 / 2.15);
+	border-left: 2px dashed rgb(27 30 28 / 0.45);
+	pointer-events: none;
+}
+
+.notebook-page {
+	min-height: 0;
+	overflow-y: auto;
+	padding: 1.5rem 1.7rem 1.3rem;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+	scrollbar-color: rgb(27 30 28 / 0.3) transparent;
+}
+
+.notebook-left {
+	padding-right: 2.2rem;
+}
+
+.notebook-right {
+	display: flex;
+	flex-direction: column;
+	padding-left: 2.2rem;
+}
+
+/* The cover: kraft, a label, an elastic strap. It swings open on the spine. */
+.notebook-cover {
+	position: absolute;
+	top: -2px;
+	bottom: -2px;
+	left: calc(100% * 1 / 2.15);
+	right: -2px;
+	z-index: 3;
+	display: none;
+	place-items: center;
+	background:
+		repeating-linear-gradient(
+			115deg,
+			rgb(255 255 255 / 0.05) 0 3px,
+			transparent 3px 9px
+		),
+		var(--kraft);
+	border: 2px solid var(--ink);
+	border-radius: 0 6px 6px 0;
+	transform-origin: left center;
+	backface-visibility: hidden;
+}
+
+.notebook-cover::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 12%;
+	width: 12px;
+	background: var(--ink);
+}
+
+.notebook-cover-label {
+	padding: 0.7rem 1.4rem;
+	font-weight: 850;
+	font-size: 1.4rem;
+	letter-spacing: 0.02em;
+	background: var(--leaf);
+	border: 2px solid var(--ink);
+	border-radius: 4px;
+	box-shadow: 0 3px 0 var(--ink);
+	transform: rotate(-2deg);
+}
+
+.notebook-close {
+	position: absolute;
+	top: 12px;
+	right: 16px;
+	z-index: 4;
+	padding: 0.4rem 0.8rem;
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 750;
+	color: var(--ink);
+	background: var(--lamp);
+	border: 1.5px solid var(--ink);
+	border-radius: 999px;
+	box-shadow: 0 3px 0 var(--ink);
+	cursor: pointer;
+}
+
+.notebook-kicker {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.notebook-title {
+	margin-top: 0.3rem;
+	font-size: 1.45rem;
+	font-weight: 850;
+	line-height: 1.15;
+}
+
+.notebook-note {
+	margin-top: 0.5rem;
+	font-size: 0.9rem;
+	line-height: 1.45;
+	color: var(--ink-soft);
+}
+
+.notebook-mark {
+	flex: none;
+	width: 1rem;
+	height: 1rem;
+	color: var(--check);
+}
+
+/* Tonight's claims: order slips, pinned slightly askew. */
+.notebook-files {
+	display: grid;
+	gap: 0.55rem;
+	margin-top: 0.9rem;
+	padding: 0;
+	list-style: none;
+}
+
+.notebook-file {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 1.2rem;
+	gap: 0.15rem 0.6rem;
+	width: 100%;
+	padding: 0.5rem 0.7rem;
+	font: inherit;
+	text-align: left;
+	color: var(--ink);
+	background: #fff;
+	border: 1.5px solid var(--ink);
+	border-radius: 3px;
+	box-shadow: 0 2px 0 rgb(0 0 0 / 0.18);
+	cursor: pointer;
+}
+
+.notebook-files li:nth-child(odd) .notebook-file {
+	transform: rotate(-0.4deg);
+}
+
+.notebook-files li:nth-child(even) .notebook-file {
+	transform: rotate(0.35deg);
+}
+
+.notebook-file[aria-pressed="true"] {
+	background: #fff4d6;
+	border-width: 2px;
+	box-shadow: 0 3px 0 var(--ink);
+}
+
+.notebook-file-story {
+	grid-column: 1;
+	font-size: 0.84rem;
+	font-weight: 650;
+	line-height: 1.35;
+}
+
+.notebook-file-verdict {
+	--mono: 1;
+	grid-column: 1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.1rem 0.9rem;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	color: var(--ink-soft);
+}
+
+.notebook-file .notebook-mark {
+	grid-row: 1 / span 2;
+	grid-column: 2;
+	align-self: center;
+	width: 1.2rem;
+	height: 1.2rem;
+}
+
+/* The ingredients of the claim on the page: change one, the agent cooks again. */
+.notebook-ingredients {
+	margin-top: 1.2rem;
+	padding-top: 0.9rem;
+	border-top: 1.5px solid var(--ink);
+}
+
+.notebook-ingredients h3 {
+	font-size: 1rem;
+	font-weight: 850;
+}
+
+.notebook-story {
+	margin-top: 0.3rem;
+	font-size: 0.86rem;
+	line-height: 1.4;
+}
+
+.notebook-hint,
+.notebook-edited {
+	margin-top: 0.3rem;
+	font-size: 0.76rem;
+	color: var(--ink-soft);
+}
+
+.notebook-edited:empty {
+	display: none;
+}
+
+.notebook-pieces,
+.notebook-circumstances {
+	display: grid;
+	gap: 0.25rem;
+	margin: 0.8rem 0 0;
+	padding: 0;
+	font-size: 0.84rem;
+	border: 0;
+}
+
+.notebook-pieces legend,
+.notebook-circumstances legend,
+.notebook-range-head {
+	margin-bottom: 0.2rem;
+	font-size: 0.78rem;
+	font-weight: 800;
+}
+
+.notebook-pieces label,
+.notebook-circumstances label {
+	display: flex;
+	gap: 0.45rem;
+	align-items: baseline;
+	cursor: pointer;
+}
+
+.notebook-ingredients input {
+	accent-color: var(--ink);
+}
+
+.notebook-range {
+	display: grid;
+	margin-top: 0.8rem;
+}
+
+.notebook-range-head {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.notebook-range-value {
+	--mono: 1;
+	font-family: var(--font-mono);
+	font-weight: 700;
+}
+
+/* The agent's recipe. */
+/* The recipe's title and its stamp stay in sight while the steps scroll under them. */
+.notebook-recipe-head {
+	position: sticky;
+	top: -1.5rem;
+	z-index: 1;
+	margin: -1.5rem -0.5rem 0;
+	padding: 1.5rem 9.5rem 0.6rem 0.5rem;
+	background: var(--leaf);
+	border-bottom: 1.5px solid var(--ink);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem 1rem;
+}
+
+.notebook-recipe-head h3 {
+	font-size: 1.45rem;
+	font-weight: 850;
+}
+
+/* The outcome, stamped by the chef: a check, so in red. */
+.notebook-stamp {
+	padding: 0.15rem 0.6rem;
+	font-weight: 900;
+	font-size: 0.85rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--check);
+	border: 3px double var(--check);
+	border-radius: 4px;
+	opacity: 0;
+	transform: rotate(-6deg) scale(2);
+}
+
+.notebook-stamp.is-stamped {
+	opacity: 1;
+	transform: rotate(-6deg);
+	transition:
+		opacity 120ms,
+		transform 260ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.notebook-steps {
+	display: grid;
+	gap: 0.8rem;
+	flex: 1;
+	margin-top: 0.9rem;
+	padding: 0 0 0.5rem;
+	list-style: none;
+}
+
+.notebook-step {
+	position: relative;
+	padding: 0.7rem 0.9rem 0.75rem;
+	font-size: 0.86rem;
+	line-height: 1.45;
+	opacity: 0;
+	transform: translateY(6px);
+	transition:
+		opacity 250ms,
+		transform 250ms;
+}
+
+.notebook-step.is-drawn {
+	opacity: 1;
+	transform: none;
+}
+
+.notebook-frame {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.is-code .notebook-frame {
+	color: var(--graphite);
+}
+
+.is-model .notebook-frame {
+	color: var(--model);
+}
+
+/* Every stroke is drawn, not shown: a line that runs along its path. */
+.notebook-stroke {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	vector-effect: non-scaling-stroke;
+}
+
+.is-drawn .notebook-stroke {
+	stroke-dashoffset: 0;
+	transition: stroke-dashoffset 600ms ease-out var(--d, 0s);
+}
+
+.notebook-file .notebook-stroke,
+.notebook-schema .notebook-stroke {
+	stroke-dashoffset: 0;
+}
+
+.notebook-step-head {
+	--mono: 1;
+	display: flex;
+	gap: 0.6rem;
+	align-items: baseline;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.is-model .notebook-kind {
+	--casl: 1;
+	--mono: 0;
+	font-family: var(--font);
+	font-size: 0.8rem;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--model);
+}
+
+.notebook-step h4 {
+	margin-top: 0.15rem;
+	font-size: 1rem;
+	font-weight: 800;
+}
+
+.notebook-rule {
+	margin-top: 0.2rem;
+	color: var(--ink-soft);
+}
+
+.notebook-rule span {
+	font-weight: 800;
+	color: var(--ink);
+}
+
+.notebook-result {
+	margin-top: 0.25rem;
+	font-weight: 650;
+}
+
+/* What a model wrote: its hand, its blue. */
+.notebook-written,
+.notebook-quote p {
+	--casl: 1;
+	color: var(--model);
+}
+
+.notebook-written {
+	display: grid;
+	gap: 0.1rem;
+	margin-top: 0.3rem;
+	padding: 0;
+	list-style: none;
+}
+
+.notebook-quote {
+	margin: 0.4rem 0 0;
+	padding-left: 0.7rem;
+	border-left: 2px solid var(--model);
+}
+
+.notebook-quote cite {
+	display: block;
+	font-size: 0.76rem;
+	font-style: normal;
+	color: var(--ink-soft);
+}
+
+/* Checks: a red pencil mark on each; the ones that failed decided the route. */
+.notebook-checks {
+	display: grid;
+	gap: 0.15rem;
+	margin-top: 0.4rem;
+	padding: 0;
+	list-style: none;
+}
+
+.notebook-checks li,
+.notebook-schema {
+	display: flex;
+	gap: 0.45rem;
+	align-items: center;
+}
+
+.notebook-checks .is-failed,
+.notebook-list .is-failed {
+	font-weight: 800;
+	color: var(--check);
+}
+
+.notebook-schema {
+	margin-top: 0.4rem;
+	font-size: 0.76rem;
+	color: var(--ink-soft);
+}
+
+.notebook-list {
+	--mono: 1;
+	display: grid;
+	gap: 0.1rem;
+	margin-top: 0.3rem;
+	padding: 0;
+	font-family: var(--font-mono);
+	font-size: 0.76rem;
+	list-style: none;
+}
+
+.notebook-routes {
+	margin-top: 0.6rem;
+	font-size: 0.78rem;
+}
+
+.notebook-routes p {
+	color: var(--ink-soft);
+}
+
+.notebook-routes ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem 1.2rem;
+	margin-top: 0.35rem;
+	padding: 0;
+	list-style: none;
+}
+
+.notebook-routes li {
+	position: relative;
+	color: var(--ink-soft);
+}
+
+.notebook-routes li.is-taken {
+	font-weight: 850;
+	color: var(--ink);
+}
+
+.notebook-circle {
+	position: absolute;
+	top: -6px;
+	left: -9px;
+	width: calc(100% + 18px);
+	height: calc(100% + 12px);
+	overflow: visible;
+	color: var(--check);
+	pointer-events: none;
+}
+
+.notebook-circle .notebook-stroke {
+	animation: notebook-draw 500ms ease-out forwards;
+}
+
+@keyframes notebook-draw {
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+.notebook-foot {
+	display: grid;
+	gap: 0.7rem;
+	margin-top: auto;
+	padding-top: 0.8rem;
+	border-top: 1.5px solid var(--ink);
+}
+
+.notebook-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem 1.1rem;
+	padding: 0;
+	font-size: 0.74rem;
+	color: var(--ink-soft);
+	list-style: none;
+}
+
+.notebook-legend li {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+}
+
+.notebook-legend svg {
+	width: 28px;
+	height: 12px;
+	overflow: visible;
+}
+
+.notebook-sample {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+}
+
+.notebook-legend .is-code svg {
+	color: var(--graphite);
+}
+
+.notebook-legend .is-model svg {
+	color: var(--model);
+}
+
+.notebook-legend .is-check svg {
+	color: var(--check);
+}
+
+.notebook-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem 1.2rem;
+}
+
+.notebook-replay {
+	padding: 0.45rem 0.9rem;
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 800;
+	color: var(--leaf);
+	background: var(--ink);
+	border: 0;
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.notebook-full {
+	font-size: 0.85rem;
+	font-weight: 750;
+	color: var(--ink);
+	text-underline-offset: 3px;
+}
+
+/* On a phone: one page, scrolled as a whole; the cover stays shut in the chef's hands. */
+@media (max-width: 760px) {
+	.notebook {
+		width: calc(100% - 16px);
+		height: calc(100% - 16px);
+	}
+
+	.notebook-spread {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto auto;
+		overflow-y: auto;
+		box-shadow:
+			0 6px 0 rgb(0 0 0 / 0.35),
+			0 0 0 4px var(--kraft),
+			0 0 0 6px var(--ink);
+	}
+
+	.notebook-spread::before,
+	.notebook-spread::after {
+		display: none;
+	}
+
+	.notebook-page {
+		overflow: visible;
+		padding: 1.1rem 1rem;
+	}
+
+	.notebook-left {
+		padding-top: 2rem;
+		border-bottom: 2px dashed rgb(27 30 28 / 0.45);
+	}
+
+	.notebook-right {
+		padding-left: 1rem;
+	}
+
+	.notebook-recipe-head {
+		top: 0;
+		margin: 0 -0.5rem;
+		padding: 0.6rem 0.5rem;
+	}
+
+	.notebook-files {
+		display: flex;
+		gap: 0.5rem;
+		overflow-x: auto;
+		padding-bottom: 0.3rem;
+	}
+
+	.notebook-files li {
+		flex: 0 0 78%;
+	}
+
+	.notebook-close {
+		top: 8px;
+		right: 8px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.notebook-step,
+	.notebook-stamp.is-stamped,
+	.is-drawn .notebook-stroke {
+		transition: none;
+	}
+
+	.notebook .notebook-stroke {
+		stroke-dashoffset: 0;
+	}
+
+	.notebook-circle .notebook-stroke {
+		animation: none;
+	}
+}

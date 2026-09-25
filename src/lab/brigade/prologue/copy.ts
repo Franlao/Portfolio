@@ -39,13 +39,15 @@ const raw = {
 			house:
 				"Ici, pas de CV à lire : les projets se goûtent. Recettes de la maison confidentielles, produits fictifs.",
 			arrived:
-				"Votre taxi est arrivé. Notre maître d'hôtel vous ouvre la portière.",
+				"Votre taxi est arrivé. Notre maîtresse d'hôtel vous ouvre la portière.",
 			typing: "La Brigade écrit…",
 			enter: "Entrer",
 			menu: "Pressé ? Lire la carte (version texte)",
 		},
 		host: {
 			welcome: "Bienvenue à La Brigade !",
+			/** At the doorstep, while the visitor reads their phone: the next step is theirs. */
+			expecting: "Le chef vous attend.",
 			thisWay: "Par ici !",
 		},
 		menuTag: "La carte",
@@ -149,6 +151,7 @@ const raw = {
 		},
 		host: {
 			welcome: "Welcome to La Brigade!",
+			expecting: "The chef is expecting you.",
 			thisWay: "This way!",
 		},
 		menuTag: "The menu",

@@ -96,6 +96,8 @@ interface BrigadeCopy {
 		play: string;
 		takePass: string;
 		read: string;
+		/** At the pass, the project opens in the chef's notebook. */
+		notebook: string;
 		soon: string;
 	};
 	stations: Record<StationId, { name: string; concept: string }>;
@@ -233,6 +235,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			play: "Jouer à ce poste",
 			takePass: "Prendre le passe",
 			read: "Lire le projet",
+			notebook: "Ouvrir le carnet du chef",
 			soon: "Ce poste ouvre bientôt.",
 		},
 		stations: {
@@ -426,6 +429,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			play: "Play this station",
 			takePass: "Take the pass",
 			read: "Read about the project",
+			notebook: "Open the chef's notebook",
 			soon: "This station opens soon.",
 		},
 		stations: {
