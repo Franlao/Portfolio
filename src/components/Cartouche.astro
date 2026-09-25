@@ -1,4 +1,5 @@
 ---
+import { contact } from "../data/contact";
 import { getTranslations, homePath, type Lang } from "../i18n/ui";
 
 interface Props {
@@ -23,9 +24,10 @@ const t = getTranslations(lang);
 		<div class="cell">
 			<span class="cell-label">{t("cartouche.contact")}</span>
 			<span class="cell-value cell-links">
-				<a href="mailto:solim.laokpezi@outlook.fr">{t("cartouche.email")}</a>
-				<a href="https://www.linkedin.com/in/solimlaokpezi">LinkedIn</a>
-				<a href="https://github.com/Franlao">GitHub</a>
+				<a href={`mailto:${contact.email}`}>{t("cartouche.email")}</a>
+				<a href={contact.linkedin}>LinkedIn</a>
+				<a href={contact.github}>GitHub</a>
+				<a href={contact.cv[lang]} target="_blank" rel="noopener">{t("cartouche.cv")}</a>
 			</span>
 		</div>
 		<nav class="cell" aria-label={t("cartouche.language")}>

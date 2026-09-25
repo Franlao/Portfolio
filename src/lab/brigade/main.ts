@@ -16,6 +16,7 @@ import type { Order } from "../../lib/offer/reader";
 import { readOffer } from "../../lib/offer/remote";
 import type { ProjectCard } from "../../lib/projects";
 import { frTypo } from "../../lib/typo";
+import { Bill } from "./bill";
 import { Cook, crate } from "./cook";
 import { copy, intlLocale } from "./copy";
 import { games } from "./games";
@@ -691,6 +692,7 @@ export function start() {
 			return;
 		}
 		const result = outcome.order;
+		tasted({ kind: "order", label });
 		const source = result.source;
 		fillTicket(result);
 		const narrate = !narrated;
@@ -882,10 +884,85 @@ export function start() {
 
 	// Visiting a station: the camera flies in, the panel explains the idea.
 	let visiting: StationId | null = null;
+	// The bill: every order, visit and tasting goes on it. After a few, the chef offers it.
+	const bill = new Bill();
+	const billDialog = element<HTMLDialogElement>(".bill");
+	const billButton = element<HTMLButtonElement>(".bill-open");
+	const billShared = element<HTMLElement>(".bill-shared");
+	let billOffered = false;
+	const tasted = (tasting: Parameters<Bill["add"]>[0]) => {
+		bill.add(tasting);
+		if (billOffered || bill.size < 3) return;
+		billOffered = true;
+		gsap.delayedCall(4, () => {
+			billButton.classList.add("is-calling");
+			if (!busy) say(chef, t.bubbles.bill, 2);
+		});
+	};
+	const openBill = () => {
+		const lines = bill.lines.map((tasting) => {
+			const li = document.createElement("li");
+			const name = document.createElement("span");
+			name.textContent =
+				tasting.kind === "order"
+					? t.bill.order(tasting.label)
+					: t.bill[tasting.kind](t.stations[tasting.station].name);
+			const price = document.createElement("span");
+			price.className = "bill-price";
+			price.textContent = t.bill.price;
+			li.append(name, price);
+			return li;
+		});
+		element<HTMLOListElement>(".bill-lines").replaceChildren(...lines);
+		element<HTMLElement>(".bill-empty").hidden = lines.length > 0;
+		billShared.textContent = "";
+		linkField.hidden = true;
+		billButton.classList.remove("is-calling");
+		billDialog.showModal();
+		sound.bell();
+	};
+	billButton.addEventListener("click", openBill);
+	// A link for the hiring manager: it skips the arrival and opens on the kitchen.
+	const shareButton = element<HTMLButtonElement>(".bill-share");
+	const linkField = element<HTMLInputElement>(".bill-link");
+	const touch = window.matchMedia("(pointer: coarse)").matches;
+	shareButton.addEventListener("click", async () => {
+		const link = new URL(`${location.pathname}?cuisine`, location.origin).href;
+		if (touch && navigator.share) {
+			try {
+				await navigator.share({ title: document.title, url: link });
+				return;
+			} catch {
+				// Closed without sharing: fall back on the copy below.
+			}
+		}
+		linkField.value = link;
+		linkField.hidden = false;
+		linkField.select();
+		let copied = false;
+		try {
+			await navigator.clipboard.writeText(link);
+			copied = true;
+		} catch {
+			copied = false;
+		}
+		billShared.textContent = copied ? t.bill.shared : t.bill.copyThis;
+		if (copied) {
+			shareButton.textContent = t.bill.copied;
+			shareButton.classList.add("is-done");
+			sound.pop();
+			gsap.delayedCall(3, () => {
+				shareButton.textContent = t.bill.share;
+				shareButton.classList.remove("is-done");
+			});
+		}
+	});
+
 	const visit = (id: StationId) => {
 		const runtime = kitchen.stations.get(id);
 		if (!runtime || !rushPanel.hidden || !gamePanel.hidden) return;
 		visiting = id;
+		tasted({ kind: "visit", station: id });
 		const project = bySlug.get(runtime.def.slug);
 		element<HTMLElement>(".visit-name").textContent = t.stations[id].name;
 		element<HTMLElement>(".visit-project").textContent = project
@@ -1072,6 +1149,7 @@ export function start() {
 
 	const startRush = () => {
 		if (busy) return;
+		tasted({ kind: "play", station: "pass" });
 		visitPanel.hidden = true;
 		stage.classList.remove("is-visiting");
 		stage.classList.add("is-rushing");
@@ -1112,6 +1190,7 @@ export function start() {
 	const openGame = async (id: StationId) => {
 		const load = games[id];
 		if (!load || busy) return;
+		tasted({ kind: "play", station: id });
 		visitPanel.hidden = true;
 		stage.classList.remove("is-visiting");
 		stage.classList.add("is-rushing");

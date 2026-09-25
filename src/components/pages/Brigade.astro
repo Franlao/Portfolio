@@ -1,5 +1,6 @@
 ---
 import "../../lab/brigade/brigade.css";
+import { contact } from "../../data/contact";
 import { homePath, type Lang, menuPath, projectPath } from "../../i18n/ui";
 import { copy } from "../../lab/brigade/copy";
 import { prologueCopy } from "../../lab/brigade/prologue/copy";
@@ -153,6 +154,7 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 		</section>
 
 		<div class="brigade-corner">
+			<button type="button" class="bill-open">{t.bill.open}</button>
 			<button type="button" class="sound-toggle" aria-pressed="false">{t.sound.enable}</button>
 			<nav class="lang-switch" aria-label={t.language}>
 				{
@@ -168,6 +170,31 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 				}
 			</nav>
 		</div>
+
+		<dialog class="bill" aria-labelledby="bill-title">
+			<form method="dialog" class="bill-paper">
+				<p class="bill-house">La Brigade · Lyon</p>
+				<h2 id="bill-title" class="bill-title">{t.bill.title}</h2>
+				<p class="bill-table">{t.bill.table}</p>
+				<ol class="bill-lines"></ol>
+				<p class="bill-empty">{t.bill.empty}</p>
+				<p class="bill-total"><span>{t.bill.total}</span><span>{t.bill.totalValue}</span></p>
+				<p class="bill-settle">{t.bill.settle}</p>
+				<div class="bill-actions">
+					<a class="bill-write" href={`mailto:${contact.email}?subject=${encodeURIComponent(t.bill.mailSubject)}`}>{t.bill.write}</a>
+					<a class="bill-cv" href={contact.cv[lang]} target="_blank" rel="noopener">{t.bill.cv}</a>
+				</div>
+				<p class="bill-links">
+					<a href={contact.linkedin} target="_blank" rel="noopener">LinkedIn</a>
+					<a href={contact.github} target="_blank" rel="noopener">GitHub</a>
+					<a href={`mailto:${contact.email}`}>{contact.email}</a>
+				</p>
+				<button type="button" class="bill-share">{t.bill.share}</button>
+				<p class="bill-shared" role="status"></p>
+				<input class="bill-link" type="text" readonly hidden aria-label={t.bill.linkLabel} />
+				<button type="submit" class="bill-close">{t.bill.close}</button>
+			</form>
+		</dialog>
 
 		<dialog class="write">
 			<form method="dialog">

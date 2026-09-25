@@ -19,6 +19,7 @@ export const ui = {
 		"cartouche.verifiedEmpty": "aucune offre pour l'instant",
 		"cartouche.contact": "Contact",
 		"cartouche.email": "E-mail",
+		"cartouche.cv": "CV (PDF)",
 		"cartouche.language": "Langue",
 		"hero.title": "Je conçois des agents IA dont chaque décision se vérifie.",
 		"hero.intro":
@@ -93,6 +94,7 @@ export const ui = {
 		"cartouche.verifiedEmpty": "no job description yet",
 		"cartouche.contact": "Contact",
 		"cartouche.email": "Email",
+		"cartouche.cv": "CV (PDF)",
 		"cartouche.language": "Language",
 		"hero.title": "I build AI agents whose every decision can be checked.",
 		"hero.intro":

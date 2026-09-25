@@ -535,6 +535,7 @@
 .brigade-arriving .intro,
 .brigade-arriving .orders,
 .brigade-arriving .ticket,
+.brigade-arriving .bill-open,
 .brigade-arriving .tag:not(.menu-tag) {
 	visibility: hidden;
 }

@@ -63,6 +63,32 @@ interface BrigadeCopy {
 		/** Followed by what the offer asks and the house does not cook. */
 		outside: string;
 	};
+	/** The bill: what the visitor tasted, and how to reach the chef. */
+	bill: {
+		open: string;
+		title: string;
+		table: string;
+		empty: string;
+		order: (label: string) => string;
+		visit: (station: string) => string;
+		play: (station: string) => string;
+		price: string;
+		total: string;
+		totalValue: string;
+		settle: string;
+		write: string;
+		mailSubject: string;
+		cv: string;
+		share: string;
+		shared: string;
+		/** Shown on the share button once the link is copied. */
+		copied: string;
+		/** When the clipboard is blocked: the link is shown, selected, to copy by hand. */
+		copyThis: string;
+		/** Accessible name of the field holding the link. */
+		linkLabel: string;
+		close: string;
+	};
 	visit: {
 		back: string;
 		play: string;
@@ -84,6 +110,7 @@ interface BrigadeCopy {
 		rushStart: string;
 		rushEnd: string;
 		invite: string;
+		bill: string;
 		nothing: string;
 	};
 	quit: string;
@@ -174,6 +201,30 @@ const raw: Record<Lang, BrigadeCopy> = {
 			meta: (station, share) => `${station}, ${share} de votre commande`,
 			outside: "Pas au menu :",
 		},
+		bill: {
+			open: "L'addition",
+			title: "L'addition",
+			table: "Table du chef · recruteur",
+			empty:
+				"Rien goûté pour l'instant : passez commande, ou visitez un poste.",
+			order: (label) => `Commande : ${label}`,
+			visit: (station) => `Visite : ${station}`,
+			play: (station) => `Dégustation : ${station}`,
+			price: "offert",
+			total: "Total",
+			totalValue: "0 €",
+			settle:
+				"C'est la maison qui invite. Pour régler, un échange avec le chef suffit.",
+			write: "Écrire au chef",
+			mailSubject: "Rencontre via La Brigade",
+			cv: "Le CV à emporter (PDF)",
+			share: "Transmettre la cuisine à un collègue",
+			shared: "Lien copié : il ouvre directement la cuisine.",
+			copied: "✓ Lien copié",
+			copyThis: "Copiez ce lien (Ctrl+C) : il ouvre directement la cuisine.",
+			linkLabel: "Lien vers la cuisine",
+			close: "Fermer",
+		},
 		visit: {
 			back: "Revenir à la cuisine",
 			play: "Jouer à ce poste",
@@ -224,6 +275,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			rushStart: "À vous le passe !",
 			rushEnd: "Service terminé !",
 			invite: "Une commande ?",
+			bill: "L'addition ?",
 			nothing: "Rien à cuisiner !",
 		},
 		quit: "Quitter",
@@ -342,6 +394,29 @@ const raw: Record<Lang, BrigadeCopy> = {
 			meta: (station, share) => `${station}, ${share} of your order`,
 			outside: "Not on the menu:",
 		},
+		bill: {
+			open: "The bill",
+			title: "The bill",
+			table: "Chef's table · recruiter",
+			empty: "Nothing tasted yet: place an order, or visit a station.",
+			order: (label) => `Order: ${label}`,
+			visit: (station) => `Visit: ${station}`,
+			play: (station) => `Tasting: ${station}`,
+			price: "on the house",
+			total: "Total",
+			totalValue: "€0",
+			settle:
+				"The house is treating you. To settle, a conversation with the chef will do.",
+			write: "Write to the chef",
+			mailSubject: "Meeting via La Brigade",
+			cv: "The CV to take away (PDF)",
+			share: "Pass the kitchen on to a colleague",
+			shared: "Link copied: it opens straight onto the kitchen.",
+			copied: "✓ Link copied",
+			copyThis: "Copy this link (Ctrl+C): it opens straight onto the kitchen.",
+			linkLabel: "Link to the kitchen",
+			close: "Close",
+		},
 		visit: {
 			back: "Back to the kitchen",
 			play: "Play this station",
@@ -392,6 +467,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			rushStart: "The pass is yours!",
 			rushEnd: "Service over!",
 			invite: "Any orders?",
+			bill: "The bill?",
 			nothing: "Nothing to cook!",
 		},
 		quit: "Quit",
