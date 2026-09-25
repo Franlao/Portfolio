@@ -422,6 +422,8 @@ export const game: StationGame = {
 				status,
 				`${head} ${left ? t.pick.remaining(left) : t.pick.ready}`,
 			);
+			// The tray is full: the next move is to call the service, not to go back up.
+			if (!left) service.focus({ preventScroll: true });
 		};
 
 		// The chef checks one card: stamp, reason, and the mark on its tray slot.

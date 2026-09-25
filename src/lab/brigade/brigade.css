@@ -58,6 +58,9 @@
 	left: 24px;
 	max-width: 25rem;
 	pointer-events: none;
+	text-shadow:
+		0 0 3px var(--night),
+		0 0 8px var(--night);
 }
 
 .intro h1 {
@@ -134,7 +137,7 @@
 	box-shadow: 1px 1px 0 var(--ink);
 }
 
-.order:disabled {
+.order[aria-disabled="true"] {
 	cursor: progress;
 	opacity: 0.55;
 	transform: none;
@@ -231,6 +234,14 @@
 }
 
 /* Speech bubbles: hand-lettered, like a comic. */
+
+/* The 3D labels are stacked by their distance to the camera: CSS2DRenderer writes an
+   inline z-index on every frame. A line someone says must never hide behind a tag. */
+.bubble,
+.ding-anchor {
+	/* biome-ignore lint/complexity/noImportantStyles: overrides the inline z-index the renderer writes on every frame. */
+	z-index: 100000 !important;
+}
 
 .bubble {
 	--casl: 1;
@@ -459,11 +470,14 @@
 	box-shadow: 3px 3px 0 var(--ink);
 }
 
+/* Shown again at once (focus can come back to them), hidden only once faded out. */
 .intro,
 .orders,
 .ticket,
 .dish {
-	transition: opacity 300ms;
+	transition:
+		opacity 300ms,
+		visibility 0s;
 }
 
 /* Write-your-own order. */
@@ -546,27 +560,32 @@
 		bottom: 14px;
 	}
 
+	/* One line per ticket: the row scrolls sideways and stays low, under the panels. */
+	.order-label {
+		white-space: nowrap;
+	}
+
+	/* Below the stacked corner buttons, clear of the links to the text version. */
 	.ticket {
 		left: auto;
 		right: 12px;
 		width: 12.5rem;
 		font-size: 0.72rem;
-		top: 70px;
+		top: 124px;
 	}
 
+	/* Clear of the order tickets below. */
 	.panel {
 		left: 12px;
 		right: 12px;
 		width: auto;
-		bottom: 110px;
+		bottom: 128px;
 	}
 
-	.visit {
-		top: auto;
-	}
-
+	/* On short screens (a phone held sideways, a 200 % zoom), the intro and its links stay
+	   visible above the panel: 252px is the intro above and the order tickets below. */
 	.panel {
-		max-height: 48vh;
+		max-height: min(48vh, calc(100% - 252px));
 		overflow-y: auto;
 	}
 
@@ -597,8 +616,12 @@
 .is-visiting .dish,
 .is-visiting .intro,
 .is-visiting .orders {
+	visibility: hidden;
 	opacity: 0;
 	pointer-events: none;
+	transition:
+		opacity 300ms,
+		visibility 0s 300ms;
 }
 
 /* Hover on a station. */
@@ -625,7 +648,7 @@
 	font-size: 0.8rem;
 	font-weight: 700;
 	color: var(--on-night);
-	background: transparent;
+	background: var(--night);
 	border: 1.5px solid var(--on-night-soft);
 	border-radius: 2px;
 	cursor: pointer;
@@ -642,6 +665,7 @@
 	display: flex;
 	font-size: 0.8rem;
 	font-weight: 700;
+	background: var(--night);
 	border: 1.5px solid var(--on-night-soft);
 	border-radius: 2px;
 }
@@ -939,7 +963,7 @@
 
 .rush-verdict-chef {
 	margin-top: 0.25rem;
-	color: var(--model);
+	color: var(--ink);
 	font-weight: 650;
 }
 
@@ -980,7 +1004,7 @@
 
 .rush-chef {
 	line-height: 1.5;
-	color: var(--model);
+	color: var(--ink);
 }
 
 .rush-end-actions {
@@ -999,8 +1023,12 @@
 .is-rushing .orders,
 .is-rushing .ticket,
 .is-rushing .dish {
+	visibility: hidden;
 	opacity: 0;
 	pointer-events: none;
+	transition:
+		opacity 300ms,
+		visibility 0s 300ms;
 }
 
 .is-rushing .tag {
@@ -1101,6 +1129,18 @@
 		max-height: calc(100% - 24px);
 		padding: 0.8rem;
 	}
+
+	/* A visit is a bottom sheet on phones: the order tickets are hidden meanwhile, and the
+	   corner buttons stay clear above it. */
+	.panel.visit {
+		top: auto;
+		bottom: 16px;
+	}
+
+	/* The game panels cover the corner buttons on a phone: out of sight, out of the tab order. */
+	.is-rushing .brigade-corner {
+		visibility: hidden;
+	}
 }
 
 /* The side door for a recruiter in a hurry. */
@@ -1125,9 +1165,23 @@
 .rush :focus-visible,
 .game :focus-visible,
 .write :focus-visible,
-.tag:focus-visible,
 .order:focus-visible {
 	outline-color: var(--ink);
+}
+
+/* Station tags and the served dish float over the scene, light or dark: ink and lamp show on both. */
+.tag:focus-visible,
+.dish:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 6px var(--lamp);
+}
+
+/* On wide screens the dish sits at the bottom right: the order tickets make room for it. */
+@media (min-width: 761px) {
+	.is-served .orders {
+		right: calc(min(24rem, 100% - 48px) + 48px);
+	}
 }
 
 /* The ticket, when a language model read the offer: its lines are in the model's blue and
@@ -1410,4 +1464,70 @@
 	.bill-open.is-calling {
 		animation: none;
 	}
+}
+
+/* Very short screens: a phone held sideways, or a desktop zoomed to 200 %. Two columns,
+   so nothing covers anything: the name, a short ticket and the orders on the left; the
+   corner buttons, the subtitles and the dish on the right. */
+@media (max-height: 500px) {
+	.intro h1 {
+		font-size: 1.5rem;
+	}
+
+	.intro p:last-child {
+		display: none;
+	}
+
+	.brigade-corner {
+		top: 10px;
+		right: 12px;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.ticket {
+		top: 118px;
+		left: 16px;
+		right: auto;
+		width: min(15rem, 44%);
+		padding: 0.6rem 0.8rem 1.1rem;
+		font-size: 0.72rem;
+	}
+
+	/* The lines of the ticket are read aloud and shown in the subtitles: the header
+	   and the count are enough here. */
+	.ticket-lines {
+		display: none;
+	}
+
+	.orders {
+		right: auto;
+		bottom: 10px;
+		max-width: calc(50% - 16px);
+	}
+
+	/* Each order card already says « Commande »: the heading gives its room to the ticket. */
+	.orders-title {
+		display: none;
+	}
+
+	.panel,
+	.panel.visit {
+		top: 54px;
+		right: 12px;
+		bottom: 10px;
+		left: auto;
+		width: min(24rem, 48%);
+		max-height: none;
+		overflow-y: auto;
+	}
+
+	.is-served .ticket {
+		display: block;
+	}
+}
+
+/* A station tag that has the keyboard focus comes above the panels, never behind them. */
+.brigade-labels:has(.tag:focus-visible) {
+	z-index: 4;
 }

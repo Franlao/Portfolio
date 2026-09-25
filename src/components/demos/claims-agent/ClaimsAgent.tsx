@@ -378,7 +378,7 @@ export default function ClaimsAgent({ lang }: { lang: Lang }) {
 				</form>
 
 				{wide && (
-					<div className="claims-graph" role="img" aria-label={t.ui.graphLabel}>
+					<figure className="claims-graph" aria-label={t.ui.graphLabel}>
 						<ReactFlow
 							nodes={nodes}
 							edges={edges}
@@ -398,7 +398,7 @@ export default function ClaimsAgent({ lang }: { lang: Lang }) {
 							edgesFocusable={false}
 							onNodeClick={(_, node) => select(node.id as NodeId)}
 						/>
-					</div>
+					</figure>
 				)}
 			</div>
 

@@ -23,9 +23,9 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 ---
 
 <Base lang={lang} alternates={alternates} title={t.meta.title} description={t.meta.description}>
-	<div class="brigade-stage">
+	<main class="brigade-stage">
 		<Arrival lang={lang} menuHref={menuPath(lang)} />
-		<canvas id="brigade-canvas" aria-label={t.intro.canvas}></canvas>
+		<canvas id="brigade-canvas" role="img" aria-label={t.intro.canvas}></canvas>
 
 		<header class="intro">
 			<h1>Solim Laokpezi</h1>
@@ -37,8 +37,8 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 			<p>{t.intro.text}</p>
 		</header>
 
-		<nav class="orders" aria-label={t.orders.title}>
-			<p class="orders-title">{t.orders.title}</p>
+		<section class="orders" aria-labelledby="orders-title">
+			<p class="orders-title" id="orders-title">{t.orders.title}</p>
 			<ul>
 				{
 					presets.map((preset) => (
@@ -57,27 +57,28 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 					</button>
 				</li>
 			</ul>
-		</nav>
+		</section>
 
-		<aside class="ticket" hidden aria-live="polite">
-			<p class="ticket-number"></p>
+		<section class="ticket" hidden aria-labelledby="ticket-number">
+			<p class="ticket-number" id="ticket-number"></p>
 			<p class="ticket-table">{t.ticket.table}</p>
 			<p class="ticket-title"></p>
 			<ol class="ticket-lines"></ol>
-			<p class="ticket-foot"></p>
-		</aside>
+			<p class="ticket-foot" aria-live="polite"></p>
+		</section>
 
-		<section class="dish panel" hidden aria-live="polite">
-			<h2>{t.dish.title}</h2>
+		<!-- Focused when served (main.ts), so it is announced once rather than as a live region. -->
+		<section class="dish panel" hidden tabindex="-1" aria-labelledby="dish-title">
+			<h2 id="dish-title">{t.dish.title}</h2>
 			<p>{t.dish.intro}</p>
 			<ol class="dish-list"></ol>
 			<p class="dish-outside panel-note" hidden></p>
 			<p class="panel-note">{t.dish.note}</p>
 		</section>
 
-		<section class="visit panel" hidden>
+		<section class="visit panel" hidden aria-labelledby="visit-name">
 			<button type="button" class="visit-back">{t.visit.back}</button>
-			<h2 class="visit-name"></h2>
+			<h2 class="visit-name" id="visit-name"></h2>
 			<p class="visit-project"></p>
 			<p class="visit-concept"></p>
 			<p class="visit-summary"></p>
@@ -97,14 +98,14 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 			</header>
 
 			<div class="rush-play">
-				<aside class="rush-rules">
+				<div class="rush-rules">
 					<h3>{t.rush.rulesTitle}</h3>
 					<ul>
 						{t.rush.rules.map((rule) => <li>{rule}</li>)}
 					</ul>
-				</aside>
+				</div>
 
-				<article class="rush-ticket">
+				<article class="rush-ticket" id="rush-case">
 					<p class="rush-story"></p>
 					<ul class="rush-pieces"></ul>
 					<dl class="rush-facts">
@@ -115,7 +116,8 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 					<p class="rush-stamp" aria-hidden="true"></p>
 				</article>
 
-				<div class="rush-choices" role="group" aria-label={t.rush.decision}>
+				<!-- The case is described on the group: a screen reader hears it on reaching the choices. -->
+				<div class="rush-choices" role="group" aria-label={t.rush.decision} aria-describedby="rush-case">
 					{
 						outcomes.map((outcome, index) => (
 							<button type="button" class="rush-choice" data-choice={outcome}>
@@ -182,7 +184,7 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 				<p class="bill-settle">{t.bill.settle}</p>
 				<div class="bill-actions">
 					<a class="bill-write" href={`mailto:${contact.email}?subject=${encodeURIComponent(t.bill.mailSubject)}`}>{t.bill.write}</a>
-					<a class="bill-cv" href={contact.cv[lang]} target="_blank" rel="noopener">{t.bill.cv}</a>
+					<a class="bill-cv" href={contact.cv[lang]} target="_blank" rel="noopener">{t.bill.cv}<span class="visually-hidden"> {t.bill.newTab}</span></a>
 				</div>
 				<p class="bill-links">
 					<a href={contact.linkedin} target="_blank" rel="noopener">LinkedIn</a>
@@ -196,19 +198,23 @@ const outcomes = ["offer", "missing", "escalation"] as const;
 			</form>
 		</dialog>
 
-		<dialog class="write">
+		<dialog class="write" aria-label={t.orders.writeLabel}>
 			<form method="dialog">
 				<label for="write-text">{t.write.label}</label>
-				<textarea id="write-text" rows="8" placeholder={t.write.placeholder}></textarea>
-				<p class="write-privacy">{t.write.privacy}</p>
-				<p class="write-error" role="alert"></p>
+				<textarea
+					id="write-text"
+					rows="8"
+					placeholder={t.write.placeholder}
+					aria-describedby="write-privacy write-error"></textarea>
+				<p class="write-privacy" id="write-privacy">{t.write.privacy}</p>
+				<p class="write-error" id="write-error" role="alert"></p>
 				<div class="write-actions">
 					<button type="submit" class="write-send">{t.write.send}</button>
 					<button type="button" class="write-cancel">{t.write.cancel}</button>
 				</div>
 			</form>
 		</dialog>
-	</div>
+	</main>
 
 	<script type="application/json" id="brigade-data" set:html={JSON.stringify(projects)} />
 	<script>

@@ -14,6 +14,8 @@ export const ui = {
 		"site.title": "Solim Laokpezi, AI Engineer",
 		"site.description":
 			"AI Engineer à Lyon : agents IA auditables, pipelines RAG, services LLM en production. Collez une offre, le site l'analyse devant vous.",
+		"site.imageAlt":
+			"Une rue de Lyon la nuit, le restaurant La Brigade entre un café et une librairie, Fourvière au fond : le portfolio de Solim Laokpezi, AI Engineer.",
 		"cartouche.role": "AI Engineer, Lyon",
 		"cartouche.verified": "Vérifié pour",
 		"cartouche.verifiedEmpty": "aucune offre pour l'instant",
@@ -89,6 +91,8 @@ export const ui = {
 		"site.title": "Solim Laokpezi, AI Engineer",
 		"site.description":
 			"AI Engineer in Lyon: auditable AI agents, RAG pipelines, production LLM services. Paste a job description and watch the site analyze it.",
+		"site.imageAlt":
+			"A street in Lyon at night, the restaurant La Brigade between a café and a bookshop, Fourvière behind: the portfolio of Solim Laokpezi, AI Engineer.",
 		"cartouche.role": "AI Engineer, Lyon",
 		"cartouche.verified": "Checked against",
 		"cartouche.verifiedEmpty": "no job description yet",

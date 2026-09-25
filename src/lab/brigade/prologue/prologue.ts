@@ -107,7 +107,10 @@ function speaker(person: Person) {
 	return (text: string, seconds = 2) => {
 		div.textContent = text;
 		div.classList.add("is-visible");
-		gsap.delayedCall(seconds, () => div.classList.remove("is-visible"));
+		// Reduced motion speeds the global timeline up: reading time stays real.
+		gsap.delayedCall(seconds * gsap.globalTimeline.timeScale(), () =>
+			div.classList.remove("is-visible"),
+		);
 	};
 }
 
@@ -396,6 +399,7 @@ async function openHouse(
 	const rest = hand.rest();
 	hand.sound.bell();
 	const anchor = document.createElement("div");
+	anchor.className = "ding-anchor";
 	const ding = document.createElement("span");
 	ding.className = "ding";
 	ding.textContent = dingText;
@@ -558,9 +562,11 @@ async function tour(hand: Stagehand, copy: PrologueCopy): Promise<void> {
 	const orders = stage.querySelector<HTMLElement>(".orders");
 	const head = new THREE.Vector3();
 
-	// On wide screens, the balloon hangs above the chef's head.
+	// On roomy screens, the balloon hangs above the chef's head. On phones and very short
+	// screens, the stylesheet places it: the same query decides both, so they never disagree.
+	const docked = window.matchMedia("(max-width: 760px), (max-height: 500px)");
 	const follow = () => {
-		if (!hand.frame.wide) {
+		if (docked.matches) {
 			balloon.style.removeProperty("left");
 			balloon.style.removeProperty("top");
 			return;

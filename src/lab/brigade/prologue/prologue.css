@@ -265,6 +265,11 @@
 	}
 }
 
+.arrival :focus-visible,
+.tour :focus-visible {
+	outline-color: var(--ink);
+}
+
 /* Quick replies at the bottom of the conversation. */
 
 .phone-replies {
@@ -493,7 +498,7 @@
 	}
 
 	.tour {
-		top: 76px;
+		top: 124px;
 		left: 16px;
 		right: 16px;
 		width: auto;
@@ -547,7 +552,8 @@
 	z-index: 2;
 	top: 78px;
 	right: 24px;
-	width: min(24rem, calc(100% - 48px));
+	/* Clear of the intro (25rem from the left edge) on tablets and small laptops. */
+	width: min(24rem, calc(100% - 464px));
 	padding: 0.7rem 0.95rem 0.75rem;
 	color: var(--ink);
 	background: var(--paper);
@@ -624,12 +630,45 @@
 		top: auto;
 		left: 16px;
 		right: 16px;
-		bottom: 112px;
+		bottom: 128px;
 		width: auto;
 		font-size: 0.9rem;
 	}
 
 	.is-served .narration {
+		display: none;
+	}
+}
+
+@media (max-height: 500px) {
+	.narration {
+		top: 54px;
+		right: 12px;
+		bottom: auto;
+		left: auto;
+		width: min(22rem, 48%);
+		padding: 0.5rem 0.7rem;
+		font-size: 0.8rem;
+	}
+
+	.narration-dots {
+		display: none;
+	}
+
+	.is-served .narration {
+		display: none;
+	}
+
+	/* The chef's balloon sits in the right column instead of following the chef. */
+	.tour {
+		top: 54px;
+		right: 12px;
+		left: auto;
+		width: min(22rem, 48%);
+		transform: none;
+	}
+
+	.tour::after {
 		display: none;
 	}
 }

@@ -79,6 +79,8 @@ interface BrigadeCopy {
 		write: string;
 		mailSubject: string;
 		cv: string;
+		/** Read by screen readers after links that open a new tab. */
+		newTab: string;
 		share: string;
 		shared: string;
 		/** Shown on the share button once the link is copied. */
@@ -218,6 +220,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			write: "Écrire au chef",
 			mailSubject: "Rencontre via La Brigade",
 			cv: "Le CV à emporter (PDF)",
+			newTab: "(s'ouvre dans un nouvel onglet)",
 			share: "Transmettre la cuisine à un collègue",
 			shared: "Lien copié : il ouvre directement la cuisine.",
 			copied: "✓ Lien copié",
@@ -410,6 +413,7 @@ const raw: Record<Lang, BrigadeCopy> = {
 			write: "Write to the chef",
 			mailSubject: "Meeting via La Brigade",
 			cv: "The CV to take away (PDF)",
+			newTab: "(opens in a new tab)",
 			share: "Pass the kitchen on to a colleague",
 			shared: "Link copied: it opens straight onto the kitchen.",
 			copied: "✓ Link copied",

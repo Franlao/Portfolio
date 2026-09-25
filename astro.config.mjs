@@ -7,8 +7,13 @@ import vercel from "@astrojs/vercel";
 import { defineConfig, envField } from "astro/config";
 import frenchTypography from "./src/lib/satteri-french-typography.ts";
 
+// Vercel exposes the production domain at build time; locally there is none.
+const productionHost = /** @type {any} */ (globalThis).process?.env
+	?.VERCEL_PROJECT_PRODUCTION_URL;
+
 // https://astro.build/config
 export default defineConfig({
+	site: productionHost ? `https://${productionHost}` : "http://localhost:4321",
 	integrations: [react(), mdx()],
 	adapter: vercel(),
 	// The Brigade prototype became the home page.

@@ -145,7 +145,8 @@ export function Legend({
 	const t = getTranslations(lang);
 	const titleId = useId();
 	return (
-		<aside className={`legend ${className}`} aria-labelledby={titleId}>
+		// A labelled section, not an aside: the legend sits inside <main>.
+		<section className={`legend ${className}`} aria-labelledby={titleId}>
 			<h2 className="legend-title" id={titleId}>
 				{t("legend.title")}
 			</h2>
@@ -163,6 +164,6 @@ export function Legend({
 					<span>{t("legend.check")}</span>
 				</li>
 			</ul>
-		</aside>
+		</section>
 	);
 }

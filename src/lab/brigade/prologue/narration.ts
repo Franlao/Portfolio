@@ -11,7 +11,8 @@ export function createNarration(
 	copy: PrologueCopy["narration"],
 	reducedMotion: boolean,
 ) {
-	const box = document.createElement("aside");
+	// A labelled region, not an aside: it sits inside <main>.
+	const box = document.createElement("section");
 	box.className = "narration";
 	box.setAttribute("aria-label", copy.label);
 	box.hidden = true;

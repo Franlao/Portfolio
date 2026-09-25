@@ -113,6 +113,7 @@
 /* Graph: sits on the grid paper. Ruled nodes are code, freehand nodes are model steps. */
 
 .claims-graph {
+	margin: 0;
 	height: 720px;
 	min-width: 0;
 }

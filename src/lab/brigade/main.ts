@@ -47,6 +47,14 @@ const reducedMotion = window.matchMedia(
 ).matches;
 const wait = (seconds: number) =>
 	new Promise<void>((resolve) => gsap.delayedCall(seconds, resolve));
+/**
+ * Reduced motion speeds the whole timeline up (see start()), but reading time and
+ * timers must keep real seconds: this converts them to timeline seconds.
+ */
+const realSeconds = (seconds: number) =>
+	seconds * gsap.globalTimeline.timeScale();
+/** Under reduced motion, the camera cuts instead of flying. */
+const cameraSeconds = (seconds: number) => (reducedMotion ? 0 : seconds);
 // Uses the promise GSAP exposes, so the animation keeps its own onComplete callback.
 const play = (tl: gsap.core.Timeline | gsap.core.Tween) =>
 	tl.then(() => undefined);
@@ -88,7 +96,7 @@ export function start() {
 	const percent = (v: number) => percentFormat.format(v);
 	const projects = readProjects();
 	const bySlug = new Map(projects.map((p) => [p.slug, p]));
-	const stage = element<HTMLDivElement>(".brigade-stage");
+	const stage = element<HTMLElement>(".brigade-stage");
 	if (lang === "fr") typesetStatic(stage);
 	const canvas = element<HTMLCanvasElement>("#brigade-canvas");
 
@@ -190,6 +198,8 @@ export function start() {
 	const bubble = (cookObj: Cook) => {
 		const div = document.createElement("div");
 		div.className = "bubble";
+		// Kitchen chatter: what matters is also said by the ticket, the panels and the narration.
+		div.setAttribute("aria-hidden", "true");
 		const object = new CSS2DObject(div);
 		object.position.set(0, 2.75, 0);
 		cookObj.root.add(object);
@@ -205,7 +215,9 @@ export function start() {
 		if (!div) return;
 		div.textContent = lang === "fr" ? frTypo(text) : text;
 		div.classList.add("is-visible");
-		gsap.delayedCall(seconds, () => div.classList.remove("is-visible"));
+		gsap.delayedCall(realSeconds(seconds), () =>
+			div.classList.remove("is-visible"),
+		);
 	};
 
 	// Station tags: real buttons, so the stations can be visited with a keyboard.
@@ -274,6 +286,7 @@ export function start() {
 	const stampDiv = document.createElement("div");
 	stampDiv.className = "stamp";
 	stampDiv.textContent = t.stamp;
+	stampDiv.setAttribute("aria-hidden", "true");
 	const stamp = new CSS2DObject(stampDiv);
 	stamp.position.copy(kitchen.points.stamp);
 	scene.add(stamp);
@@ -451,9 +464,11 @@ export function start() {
 	let busy = false;
 	let orderNumber = 41;
 
+	// aria-disabled rather than disabled: the button keeps the focus while the kitchen works.
 	const setBusy = (value: boolean) => {
 		busy = value;
-		for (const b of orderButtons) b.disabled = value;
+		for (const b of orderButtons)
+			b.setAttribute("aria-disabled", String(value));
 		stage.classList.toggle("is-busy", value);
 	};
 
@@ -646,8 +661,19 @@ export function start() {
 		gsap.fromTo(
 			dishPanel,
 			{ y: 30, opacity: 0 },
-			{ y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.6)" },
+			{
+				y: 0,
+				opacity: 1,
+				duration: 0.5,
+				ease: "back.out(1.6)",
+				// The stylesheet hides the dish during a visit or a game: no inline opacity left.
+				clearProps: "opacity,transform",
+			},
 		);
+		// The keyboard follows the service, from the order just sent to the dish.
+		const active = document.activeElement;
+		if (!active || active === document.body || active.closest(".orders"))
+			dishPanel.focus({ preventScroll: true });
 	};
 
 	// The first order is told station by station, in kitchen words then AI words.
@@ -699,7 +725,7 @@ export function start() {
 		narrated = true;
 		if (narrate) narration.show(0, source);
 		// The first time, the kitchen leaves a moment to read the subtitles.
-		await wait(narrate ? 1.6 : 0.6);
+		await wait(narrate ? realSeconds(1.6) : 0.6);
 
 		// The check: every line the model wrote must quote the offer, or it goes back.
 		if (source === "model") {
@@ -707,7 +733,7 @@ export function start() {
 			chef.faceTowards(kitchen.points.plate);
 			await play(checkTicket());
 			sound.stamp();
-			await wait(narrate ? 1.6 : 0.4);
+			await wait(narrate ? realSeconds(1.6) : 0.4);
 		}
 
 		// Retrieval: the runner fetches one jar per skill found in the order.
@@ -772,6 +798,8 @@ export function start() {
 		if (!frame.wide) resetCamera();
 		if (narrate) narration.show(2, source);
 		await play(lightStations(result));
+		// Sped up, the stations light up too fast to read this step.
+		if (narrate && reducedMotion) await wait(realSeconds(1.6));
 		gsap.to(heat, { v: 0.25, duration: 1.2, onUpdate: syncSteam });
 
 		// Plating: the cook brings the plate to the pass.
@@ -819,7 +847,7 @@ export function start() {
 		await wait(0.6);
 		showDish(result);
 		sound.good();
-		if (narrate) narration.hide(8);
+		if (narrate) narration.hide(realSeconds(8));
 
 		// Back to positions.
 		void play(cook.walk([new THREE.Vector3(0.9, 0, -1.2), home.cook])).then(
@@ -839,10 +867,15 @@ export function start() {
 			x: point.x,
 			y: 0.9,
 			z: point.z,
-			duration: 0.9,
+			duration: cameraSeconds(0.9),
 			ease: "power2.inOut",
 		});
-		gsap.to(view, { zoom: 1.7, shift: 0, duration: 0.9, ease: "power2.inOut" });
+		gsap.to(view, {
+			zoom: 1.7,
+			shift: 0,
+			duration: cameraSeconds(0.9),
+			ease: "power2.inOut",
+		});
 	};
 
 	// Camera moves: fly to a station, or back to the whole kitchen.
@@ -855,13 +888,13 @@ export function start() {
 			x: runtime.def.focus[0],
 			y: runtime.def.focus[1],
 			z: runtime.def.focus[2],
-			duration: 1.1,
+			duration: cameraSeconds(1.1),
 			ease: "power3.inOut",
 		});
 		gsap.to(view, {
 			zoom: panel === "wide" ? 2 : 2.3,
 			shift,
-			duration: 1.1,
+			duration: cameraSeconds(1.1),
 			ease: "power3.inOut",
 		});
 	};
@@ -871,19 +904,31 @@ export function start() {
 			x: 0,
 			y: 0.9,
 			z: 0,
-			duration: 1,
+			duration: cameraSeconds(1),
 			ease: "power3.inOut",
 		});
 		gsap.to(view, {
 			zoom: 1,
 			shift: restShift(),
-			duration: 1,
+			duration: cameraSeconds(1),
 			ease: "power3.inOut",
 		});
 	};
 
 	// Visiting a station: the camera flies in, the panel explains the idea.
 	let visiting: StationId | null = null;
+	// What had the focus when the visit started: it gets it back when the visit, or its game, ends.
+	let returnFocus: HTMLElement | null = null;
+	const restoreFocus = (panel: HTMLElement) => {
+		const active = document.activeElement;
+		if (active && active !== document.body && !panel.contains(active)) return;
+		const target = returnFocus?.isConnected
+			? returnFocus
+			: visiting
+				? tags.get(visiting)
+				: null;
+		target?.focus({ preventScroll: true });
+	};
 	// The bill: every order, visit and tasting goes on it. After a few, the chef offers it.
 	const bill = new Bill();
 	const billDialog = element<HTMLDialogElement>(".bill");
@@ -962,6 +1007,10 @@ export function start() {
 		const runtime = kitchen.stations.get(id);
 		if (!runtime || !rushPanel.hidden || !gamePanel.hidden) return;
 		visiting = id;
+		// Opened from the 3D scene, nothing had the focus: the station's tag will get it.
+		const opener = document.activeElement;
+		if (opener instanceof HTMLElement && !visitPanel.contains(opener))
+			returnFocus = opener === document.body ? null : opener;
 		tasted({ kind: "visit", station: id });
 		const project = bySlug.get(runtime.def.slug);
 		element<HTMLElement>(".visit-name").textContent = t.stations[id].name;
@@ -991,6 +1040,7 @@ export function start() {
 		visitPanel.hidden = true;
 		stage.classList.remove("is-visiting");
 		resetCamera();
+		restoreFocus(visitPanel);
 	};
 
 	element<HTMLButtonElement>(".visit-back").addEventListener("click", leave);
@@ -1024,6 +1074,15 @@ export function start() {
 
 	const pieceNames: Record<PieceId, string> = t.rush.pieces;
 	const stampText: Record<Outcome, string> = t.rush.stamps;
+
+	// As in the station games: no imposed timer under reduced motion.
+	if (reducedMotion) relax.checked = true;
+	// Ticking "no timer" during a case stops the clock at once.
+	relax.addEventListener("change", () => {
+		if (!relax.checked || answered || rushPanel.hidden) return;
+		countdown?.kill();
+		rushTimer.parentElement?.toggleAttribute("hidden", true);
+	});
 
 	const renderCase = (index: number) => {
 		const rushCase = deck[index];
@@ -1065,7 +1124,7 @@ export function start() {
 				{ scaleX: 1 },
 				{
 					scaleX: 0,
-					duration: ROUND_SECONDS,
+					duration: realSeconds(ROUND_SECONDS),
 					ease: "none",
 					onComplete: () => answer(null),
 				},
@@ -1153,6 +1212,7 @@ export function start() {
 		visitPanel.hidden = true;
 		stage.classList.remove("is-visiting");
 		stage.classList.add("is-rushing");
+		labels.domElement.inert = true;
 		focusStation("pass", "wide");
 		chef.faceTowards(kitchen.points.plate);
 		deck = deal();
@@ -1170,7 +1230,9 @@ export function start() {
 		countdown?.kill();
 		rushPanel.hidden = true;
 		stage.classList.remove("is-rushing");
+		labels.domElement.inert = false;
 		resetCamera();
+		restoreFocus(rushPanel);
 	};
 
 	// The other stations: each game is loaded on demand and renders into a shared panel.
@@ -1184,7 +1246,9 @@ export function start() {
 		gamePanel.hidden = true;
 		gameBody.replaceChildren();
 		stage.classList.remove("is-rushing");
+		labels.domElement.inert = false;
 		resetCamera();
+		restoreFocus(gamePanel);
 	};
 
 	const openGame = async (id: StationId) => {
@@ -1194,6 +1258,7 @@ export function start() {
 		visitPanel.hidden = true;
 		stage.classList.remove("is-visiting");
 		stage.classList.add("is-rushing");
+		labels.domElement.inert = true;
 		focusStation(id, "wide");
 		const { game } = await load();
 		element<HTMLElement>(".game-title").textContent = game.title[lang];
@@ -1233,6 +1298,7 @@ export function start() {
 
 	window.addEventListener("keydown", (event) => {
 		if (event.key === "Escape") {
+			if (billDialog.open || writeDialog.open) return;
 			if (!rushPanel.hidden) quitRush();
 			else if (!gamePanel.hidden) closeGame();
 			else leave();
@@ -1361,6 +1427,9 @@ export function start() {
 	const firstVisit = arriving;
 	void opening.then(() => {
 		arriving = false;
+		// The tour's balloon left with the focus: the first order takes it.
+		if (firstVisit && document.activeElement === document.body)
+			orderButtons[0]?.focus({ preventScroll: true });
 		gsap.delayedCall(firstVisit ? 9 : 3, invite);
 	});
 }
