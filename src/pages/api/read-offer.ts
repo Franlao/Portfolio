@@ -118,9 +118,11 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		return json(504, { error: "timeout" });
 	}
 	if (!response.ok) {
-		// The status only, never the offer nor the key: enough to tell a refused key (401)
-		// from a busy model (429) in the logs.
-		console.warn(`read-offer: Mistral answered ${response.status}`);
+		// The status and Mistral's reason, never the offer nor the key: enough to tell a
+		// refused key (401) from a busy model (429) in the logs.
+		// Mistral's error explains a 429: rate limit, exhausted quota or model capacity.
+		const reason = (await response.text().catch(() => "")).slice(0, 240);
+		console.warn(`read-offer: Mistral answered ${response.status} ${reason}`);
 		return json(502, { error: "model" });
 	}
 
