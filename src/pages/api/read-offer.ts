@@ -67,8 +67,11 @@ function allowed(visitor: string, now: number): boolean {
 	return ok;
 }
 
+/** A key pasted with its quotes or a trailing newline in the hosting settings still works. */
+const apiKey = MISTRAL_API_KEY?.trim().replace(/^(["'])(.*)\1$/, "$2");
+
 export const POST: APIRoute = async ({ request, clientAddress }) => {
-	if (!MISTRAL_API_KEY) return json(503, { error: "unavailable" });
+	if (!apiKey) return json(503, { error: "unavailable" });
 	const body = Body.safeParse(await request.json().catch(() => null));
 	if (!body.success) return json(400, { error: "invalid" });
 	const text = body.data.text;
@@ -90,7 +93,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 			headers: {
 				"content-type": "application/json",
 				accept: "application/json",
-				authorization: `Bearer ${MISTRAL_API_KEY}`,
+				authorization: `Bearer ${apiKey}`,
 			},
 			body: JSON.stringify({
 				model,
@@ -114,7 +117,12 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 	} catch {
 		return json(504, { error: "timeout" });
 	}
-	if (!response.ok) return json(502, { error: "model" });
+	if (!response.ok) {
+		// The status only, never the offer nor the key: enough to tell a refused key (401)
+		// from a busy model (429) in the logs.
+		console.warn(`read-offer: Mistral answered ${response.status}`);
+		return json(502, { error: "model" });
+	}
 
 	const payload = (await response.json().catch(() => null)) as {
 		choices?: { message?: { content?: unknown } }[];
